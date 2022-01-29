@@ -6,10 +6,9 @@ from PIL import Image
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--width", type=int, default=4, help="Number of tags wide")
-parser.add_argument("--height", type=int, default=6, help="Number of tags high")
 args = parser.parse_args()
 width = args.width
-height = args.height
+height = args.width * 4 // 3
 
 # Get tag dimensions
 if not os.path.exists("tag36_11_00000.png"):
@@ -19,8 +18,8 @@ tag0 = np.array(Image.open("tag36_11_00000.png"))
 (tag_h, tag_w, tag_channels) = tag0.shape
 (grid_h, grid_w) = (tag_h + 2, tag_w + 2)
 
+# Place tags on final grid
 tag_grid = np.zeros((height * grid_h, width * grid_w, tag_channels), dtype=np.uint8)
-
 tag_idx = 0
 for y in range(height):
     for x in range(width):
@@ -34,6 +33,7 @@ for y in range(height):
         tag_img = np.array(Image.open(tag_file))
         tag_grid[y * grid_h + 1 : (y + 1) * grid_h - 1, x * grid_w + 1 : (x + 1) * grid_w - 1, :] = tag_img
 
+# Upsample tag grid using nearest neighbor sampling
 final_width = 2400
 final_scale = final_width // tag_grid.shape[0]
 final_width = tag_grid.shape[1] * final_scale
