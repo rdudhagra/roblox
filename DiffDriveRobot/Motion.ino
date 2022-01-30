@@ -6,7 +6,7 @@
 #define MOTOR_FORWARD L298N::FORWARD
 #define MOTOR_BACKWARD L298N::BACKWARD
 #define MOTOR_STOP L298N::STOP
-#define MOTOR_ODOM_FREQ 5000 // Number of microseconds between each PID loop
+#define MOTOR_ODOM_FREQ 1000 // Number of microseconds between each PID loop
 #define MOTOR_KP 2500
 #define MOTOR_KI 0
 #define MOTOR_KD 1000

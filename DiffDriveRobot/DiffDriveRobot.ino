@@ -1,18 +1,22 @@
-#define DEBUG true
+#define DEBUG false
+#define ROBOT_ID 0
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200); // Debug
+  Serial5.begin(115200); // XBEE
   motion_setup();
   gripper_setup();
-  pause(1);
-  pick();
-  moveRelDist(0.1);
-  drop();
 }
 
-float dist = 0.2;
+bool cmdReady = false;
+float cmdX;
+float cmdY;
+float cmdTh;
 
 void loop() {
-  //  moveRelDist(dist);
-  //  moveRelDist(-dist);
+  if (cmdReady) {
+    cmdReady = false;
+    goToPose(cmdX, cmdY, cmdTh);
+    print_done();
+  }
 }

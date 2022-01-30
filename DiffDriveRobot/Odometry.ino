@@ -3,6 +3,8 @@
 #define WHEEL_DIAMETER_METERS 0.032
 #define ENCODER_TICKS_PER_REVOLUTION (298.0 * 28.0)
 
+#define REFINE_POSE_RATIO 0.1 // refined_pose = new_pose * REFINE_POSE_RATIO + old_pose * (1 - REFINE_POSE_RATIO)
+
 // Current state of the robot measured by odometry
 // From the robot's point of view, x points forward
 //                                 y points left
@@ -34,4 +36,17 @@ void update_odom(long left_enc_val, long right_enc_val, long reading_micros) {
 
 inline float encoder_ticks_to_m(float encoder_ticks) {
   return encoder_ticks / ENCODER_TICKS_PER_REVOLUTION * WHEEL_DIAMETER_METERS * PI;
+}
+
+void refinePose(float x, float y, float th) {
+  currentX = x * REFINE_POSE_RATIO + currentX * (1 - REFINE_POSE_RATIO);
+  currentY = y * REFINE_POSE_RATIO + currentY * (1 - REFINE_POSE_RATIO);
+  currentTh = th * REFINE_POSE_RATIO + currentTh * (1 - REFINE_POSE_RATIO);
+}
+
+void overwritePose(float x, float y, float th) {
+  currentX = x;
+  currentY = y;
+  currentTh = th;
+  resetFF(x, y, th);
 }

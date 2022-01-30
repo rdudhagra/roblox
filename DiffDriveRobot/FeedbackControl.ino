@@ -1,7 +1,8 @@
+#define FBK_ON true
 #define FBK_lambda 0.1
-#define FBK_kX (1.0/FBK_lambda) * 1
+#define FBK_kX (1.0/FBK_lambda)
 #define FBK_kY (2.0/(FBK_lambda*FBK_lambda))
-#define FBK_kTh (2.0/FBK_lambda) * 0.4
+#define FBK_kTh (2.0/FBK_lambda)
 
 extern float currentX;
 extern float currentY;
@@ -13,10 +14,10 @@ float ffTh;
 
 float lastFFTickTime;
 
-void resetFF() {
-  ffX = 0;
-  ffY = 0;
-  ffTh = 0;
+void resetFF(float newX, float newY, float newTh) {
+  ffX = newX;
+  ffY = newY;
+  ffTh = newTh;
   lastFFTickTime = getTime();
 }
 
@@ -37,10 +38,12 @@ void ffTick(float V, float w) {
 }
 
 void add_feedback(float *V, float *w) {
+#if FBK_ON
   float errX, errY, errTh;
   calcError(ffX, ffY, ffTh, currentX, currentY, currentTh, &errX, &errY, &errTh);
   *V += FBK_kX * errX;
   *w += FBK_kY * errY + FBK_kTh * errTh;
+#endif
 }
 
 void calcError(float ffX, float ffY, float ffTh, float currentX, float currentY, float currentTh, float *errX, float *errY, float *errTh) {

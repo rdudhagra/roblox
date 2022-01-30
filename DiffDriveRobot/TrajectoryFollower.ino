@@ -1,14 +1,18 @@
-#define TIME_PAUSE 0.5
-#define AMAX 0.05
-#define VMAX 0.05
+#define TIME_PAUSE 0.1
 
-float trapezoidalVelocityProfile(float t, float dist) {
+float trapezoidalVelocityProfile(float t, float dist, float vmax, float amax) {
   // t: the current time
   // dist: distance to travel
   // backwards: do trajectory in reverse
   // [return] the velocity to command
-  float tramp = VMAX / AMAX;
-  float tf = (abs(dist) + VMAX * VMAX / AMAX) / VMAX;
+  float tramp = vmax / amax;
+  float tf = (abs(dist) + vmax * vmax / amax) / vmax;
+
+  if (tramp > tf / 2.0) {
+    // Switch to triangular velocity profile
+    tf = sqrt(4.0 * abs(dist) / amax);
+    tramp = tf / 2.0;
+  }
 
   float v;
 
@@ -16,11 +20,11 @@ float trapezoidalVelocityProfile(float t, float dist) {
   if (t < 0)
     v = 0;
   else if (t < tramp)
-    v = AMAX * t;
+    v = amax * t;
   else if (t < tf - tramp)
-    v = VMAX;
+    v = vmax;
   else if (t < tf)
-    v = AMAX * (tf - t);
+    v = amax * (tf - t);
   else
     v = 0;
 
@@ -30,8 +34,8 @@ float trapezoidalVelocityProfile(float t, float dist) {
   return v;
 }
 
-float calcTrapVelTrajectoryTime(float dist) {
-  return (abs(dist) + VMAX * VMAX / AMAX) / VMAX + TIME_PAUSE * 2;
+float calcTrapVelTrajectoryTime(float dist, float vmax, float amax) {
+  return (abs(dist) + vmax * vmax / amax) / vmax + TIME_PAUSE * 2;
 }
 
 void cmd_diff_drive_kinematics(float V, float w) {
