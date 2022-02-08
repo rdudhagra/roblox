@@ -1,3 +1,4 @@
+import serial
 import serial.tools.list_ports
 
 # List all serial ports
@@ -58,4 +59,3 @@ def place(robot_num):
         robot_num (int): Robot ID number.
     """
     ser.write(f'R{robot_num};L\n'.encode('utf-8'))
-    
