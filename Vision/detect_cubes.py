@@ -1,6 +1,14 @@
+import argparse
 import cv2
 import numpy as np
 import pickle
+
+# Command line argument parsing
+parser = argparse.ArgumentParser()
+parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
+parser.add_argument("--cap_width", type=int, default=3840, help="Camera capture width")
+parser.add_argument("--cap_height", type=int, default=2160, help="Camera capture height")
+parser.add_argument("--cap_fps", type=int, default=30, help="Cameria capture FPS")
 
 # Setup SimpleBlobDetector parameters.
 blobDetectorParams = cv2.SimpleBlobDetector_Params()
@@ -10,7 +18,7 @@ blobDetectorParams.minThreshold = 127
 blobDetectorParams.maxThreshold = 129
 blobDetectorParams.thresholdStep = 1
 
-# Filter by Area.
+# Filter by Area
 blobDetectorParams.filterByArea = True
 blobDetectorParams.minArea = 5000
 blobDetectorParams.maxArea = 500000
@@ -70,20 +78,25 @@ def detect_blobs(threshold_img):
 
 
 if __name__ == "__main__":
+    args = parser.parse_args()
+
     # Read frames from webcam
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(args.cam_port)
     cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3840)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160)
-    cap.set(cv2.CAP_PROP_FPS, 30)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.cap_width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.cap_height)
+    cap.set(cv2.CAP_PROP_FPS, args.cap_fps)
 
     # Create a window
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
     # Show frames until 'q' is pressed
+    frames_per_loop = 30 // args.cap_fps
     while True:
-        # Read frame
-        ret, frame = cap.read()
+        for i in range(frames_per_loop):
+            # Flush stale frames from framebuffer
+            cap.grab()
+        (ret, frame) = cap.retrieve()
 
         final_img = frame.copy()
 
@@ -108,3 +121,4 @@ if __name__ == "__main__":
 
     # Release the camera
     cap.release()
+    cv2.destroyAllWindows()
