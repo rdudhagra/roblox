@@ -74,9 +74,9 @@ parser.add_argument(
     '--camera', help='Camera divide number.', default=0, type=int)
 args = parser.parse_args()
 cap = cv2.VideoCapture(args.camera)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 3840)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 2160)
-cap.set(cv2.CAP_PROP_FPS, 30)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+cap.set(cv2.CAP_PROP_FPS, 60)
 cv2.namedWindow(window_detection_name)
 cv2.createTrackbar(low_H_name, window_detection_name, low_H,
                    max_value_H, on_low_H_thresh_trackbar)
