@@ -6,8 +6,9 @@ import pickle
 blobDetectorParams = cv2.SimpleBlobDetector_Params()
 
 # Change thresholds
-blobDetectorParams.minThreshold = 0
-blobDetectorParams.maxThreshold = 255
+blobDetectorParams.minThreshold = 127
+blobDetectorParams.maxThreshold = 129
+blobDetectorParams.thresholdStep = 1
 
 # Filter by Area.
 blobDetectorParams.filterByArea = True
@@ -90,7 +91,7 @@ if __name__ == "__main__":
         hsv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
         # Show frame
-        for color in ["red", "green", "blue", "yellow", "purple", "orange"]:  
+        for color in ["red", "green", "blue", "yellow", "purple", "orange"]:
             thresh_img = threshold_for_color(hsv_img, color)
             keypoints = detect_blobs(thresh_img)
 
