@@ -2,6 +2,12 @@ import cv2
 import argparse
 import math
 import numpy as np
+import pickle
+import random
+import tarfile
+import time
+from functools import reduce
+from io import BytesIO
 
 class ChessboardInfo:
     def __init__(self, n_cols = 0, n_rows = 0, dim = 0.0):
@@ -14,7 +20,15 @@ def _pdist(p1, p2):
     return math.sqrt(math.pow(p1[0] - p2[0], 2) + math.pow(p1[1] - p2[1], 2))
 
 def lmin(seq1, seq2):
-    """Pairwise minimum
+    """Pairwise minimum of two sequences"""
+    return [min(a, b) for (a, b) in zip(seq1, seq2)]
+
+def lmax(seq1, seq2):
+    """Pairwise maximum of two sequences"""
+    return [max(a, b) for (a, b) in zip(seq1, seq2)]
+
+def mean(seq):
+    return sum(seq) / len(seq)
 
 def _get_total_num_pts(boards):
     rv = 0
@@ -75,16 +89,13 @@ def _get_corners(img, board, refine = True):
     mono = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     (ok, corners) = cv2.findChessboardCorners(mono, (board.n_cols, board.n_rows),
             cv2.CALIB_CB_ADAPTIVE_THRESH | cv2.CALIB_CB_NORMALIZE_IMAGE | cv2.CALIB_CB_FAST_CHECK)
-    corners = np.array([corner[0] for corner in corners], dtype=np.float32)
-    cv2.imshow("mono", mono)
-
-    print("ok: ", ok)
+    if corners is not None:
+        corners = np.array([corner[0] for corner in corners], dtype=np.float32)
 
     # If any corners are within border pixels of the screen edge, reject the detection by setting ok to false
     # Note: This may cause issues with very low-res cameras, where 8 pixels is a non-negligible fraction
     # of the image size
     BORDER = 8
-    print("corners", corners)
     if ok and not all([(BORDER < x < (w - BORDER)) and (BORDER < y < (h - BORDER)) for (x, y) in corners]):
         ok = False
     
@@ -103,7 +114,6 @@ def _get_corners(img, board, refine = True):
         radius = int(math.ceil(min_distance * 0.5))
         corners = cv2.cornerSubPix(mono, corners, (radius, radius), (-1, -1),
                 (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 30, 0.1))
-        print("corners2: ", corners)
 
     return (ok, corners)
 
@@ -185,7 +195,7 @@ class Calibrator:
 
         return zip(self._param_names, min_params, max_params, progress)
 
-    def mk_object_points(self, board, use_board_size = False):
+    def mk_object_points(self, boards, use_board_size = False):
         opts = np.zeros((_get_total_num_pts(boards), 3), dtype=np.float32)
         idx = 0
         for (i, b) in enumerate(boards):
@@ -266,12 +276,10 @@ class Calibrator:
                 # Refine up-scaled corners in the original full-res image
                 corners_unrefined = [(c[0] * x_scale, c[1] * y_scale) for c in downsampled_corners]
                 corners_unrefined = np.array(corners_unrefined, dtype=np.float32)
-                print("corners_unref", corners_unrefined)
                 mono = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
                 radius = int(math.ceil(scale))
                 corners = cv2.cornerSubPix(mono, corners_unrefined, (radius, radius), (-1, -1),
                         (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 30, 0.1))
-                print("corners3: ", corners)
             else:
                 corners = downsampled_corners
 
@@ -322,24 +330,21 @@ class MonoCalibrator(Calibrator):
 
         intrinsics[0, 0] = 1.0
         intrinsics[1, 1] = 1.0
-        cv2.calibrateCamera2(opts, ipts, npts,
-                self.size, intrinsics,
-                distortion,
-                np.zeros((len(good), 3), dtype=np.float32),
-                np.zeros((len(good), 3), dtype=np.float32),
-                flags = self.calib_flags)
+        cv2.calibrateCamera(np.expand_dims(opts, 0), np.expand_dims(ipts, 0), self.size, intrinsics, distortion,
+            np.zeros((len(good), 3), dtype=np.float32),
+            np.zeros((len(good), 3), dtype=np.float32),
+            flags = self.calib_flags
+        )
 
         self.intrinsics = intrinsics
         self.distortion = distortion
 
         # R is identity matrix for monocular calibration
-        self.R = np.zeros((3, 3), dtype=np.float64)
-        cv2.SetIdentity(self.R)
+        self.R = np.eye(3, dtype=np.float64)
         self.P = np.zeros((3, 4), dtype=np.float64)
-        cv2.SetZero(self.P)
 
-        self.mapx = cv2.createImage(self.size, cv2.IPL_DEPTH_32F, 1)
-        self.mapy = cv2.createImage(self.size, cv2.IPL_DEPTH_32F, 1)
+        self.mapx = np.zeros(self.size, dtype=np.float32)
+        self.mapy = np.zeros(self.size, dtype=np.float32)
         self.set_alpha(0.0)
 
     def set_alpha(self, a):
@@ -348,9 +353,10 @@ class MonoCalibrator(Calibrator):
         image are valid) to 1 (zoomed out, all pixels in original image are in
         calibrated image).
         """
-        ncm = cv2.getSubRect(self.P, (0, 0, 3, 3))
-        cv2.getOptimalNewCameraMatrix(self.intrinsics, self.distortion, self.size, a, ncm)
-        cv2.initUndistortRectifyMap(self.intrinsics, self.distortion, self.R, ncm, self.mapx, self.mapy)
+        ncm = self.P[:3,:3]
+        # cv2.getOptimalNewCameraMatrix(self.intrinsics, self.distortion, self.size, a, ncm)
+        cv2.initUndistortRectifyMap(self.intrinsics, self.distortion, self.R,
+                ncm, self.size, cv2.CV_32FC1, self.mapx, self.mapy)
 
     def remap(self, src):
         """Apply the post-calibration undistortion to the source image
@@ -417,7 +423,7 @@ class MonoCalibrator(Calibrator):
             else:
                 scrib = self.remap(rgb)
 
-            if corners.shape[0] > 0:
+            if corners is not None and corners.shape[0] > 0:
                 # Report linear error
                 src = self.mk_image_points([(corners, board)])
                 undistorted = list(cvmat_iterator(self.undistort_points(src)))
@@ -427,7 +433,7 @@ class MonoCalibrator(Calibrator):
                 scrib_src = [(x / x_scale, y / y_scale) for (x, y) in undistorted]
                 cv2.drawChessboardCorners(scrib, (board.n_cols, board.n_rows), scrib_src, True)
 
-        elif corners.shape[0] > 0:
+        elif corners is not None and corners.shape[0] > 0:
             # Draw (potentially downsampled) corners onto display image
             src = self.mk_image_points([(downsampled_corners, board)])
             cv2.drawChessboardCorners(scrib, (board.n_cols, board.n_rows), src, True)
@@ -448,26 +454,29 @@ class MonoCalibrator(Calibrator):
             images = [i for (p, i) in self.db]
             self.good_corners = self.collect_corners(images)
         # Dump should only occur if the user wants it
-        if dump:
-            pickle.dump((self.size, self.good_corners),
-                    open("/tmp/camera_calibration_%08x.pkl" % random.getrandbits(32), "w"))
         self.size = self.db[0][1].shape[:2]
         self.cal_fromcorners(self.good_corners)
         self.calibrated = True
+        if dump:
+            with open("camera_calibration_%08x.pkl" % random.getrandbits(32), "wb") as f:
+                pickle.dump((self.size, self.good_corners), f)
 
     def do_tarfile_save(self, tf):
         """Write images and calibration solution to a tarfile object"""
         def taradd(name, buf):
-            s = StringIO.StringIO(buf)
+            if type(buf) == str:
+                buf = buf.encode("utf-8")
+            s = BytesIO(buf)
+
             ti = tarfile.TarInfo(name)
-            ti.size = len(s.buf)
+            ti.size = len(buf)
             ti.uname = "calibrator"
             ti.mtime = int(time.time())
             tf.addfile(tarinfo = ti, fileobj = s)
 
         ims = [("left-%04d.png" % i, im) for (i, (_, im)) in enumerate(self.db)]
         for (name, im) in ims:
-            taradd(name, cv2.encodeImage(".png", im).tostring())
+            taradd(name, cv2.imencode(".png", im)[1].tostring())
         
         taradd("ost.txt", self.ost())
 
@@ -476,6 +485,49 @@ class MonoCalibrator(Calibrator):
         limages = [image_from_archive(archive, f) for f in archive.getnames()
                    if (f.startswith("left ") and (f.endswith(".pgm") or f.endswith("png")))]
         self.cal(limages)
+
+    def do_save(self):
+        filename = "calibrationdata.tar.gz"
+        tf = tarfile.open(filename, "w:gz")
+        self.do_tarfile_save(tf)
+        tf.close()
+        print("Wrote calibration data to", filename)
+
+    def ost(self):
+        return self.lrost("left", self.distortion, self.intrinsics, self.R, self.P)
+
+    def lrost(self, name, d, k, r, p):
+        msg = f"""# oST version 5.0 parameters
+
+
+        [image]
+        width
+        {self.size[0]}
+        height
+        {self.size[1]}
+
+        [narrow_stereo/{name}]
+
+        camera matrix
+        {" ".join(["%8f" % k[0, i] for i in range(3)])}
+        {" ".join(["%8f" % k[1, i] for i in range(3)])}
+        {" ".join(["%8f" % k[2, i] for i in range(3)])}
+
+        distortion
+        {" ".join(["%8f" % d[i, 0] for i in range(len(d))])}
+
+        rectification
+        {" ".join(["%8f" % r[0, i] for i in range(3)])}
+        {" ".join(["%8f" % r[1, i] for i in range(3)])}
+        {" ".join(["%8f" % r[2, i] for i in range(3)])}
+
+        projection
+        {" ".join(["%8f" % p[0, i] for i in range(4)])}
+        {" ".join(["%8f" % p[1, i] for i in range(4)])}
+        {" ".join(["%8f" % p[2, i] for i in range(4)])}
+        """
+        return msg
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -497,10 +549,22 @@ if __name__ == "__main__":
     cam.set(cv2.CAP_PROP_FPS, args.cap_fps)
 
     while True:
+        # Read frame
         (ret, frame) = cam.read()
+
+        # Feed frame into calibrator
         (scrib, params, linear_error) = calibrator.handle_frame(frame)
-        cv2.imshow("frame", frame)
         cv2.imshow("scrib", scrib)
+
+        # Check if calibration is good enough
+        calib_result = calibrator.compute_goodenough()
+        calib_msg = ["%s: %.3f-%.3f [%.1f]" % elt for elt in calib_result]
+        print(" / ".join(calib_msg))
+        if calibrator.goodenough:
+            calibrator.do_calibration(dump=True)
+            calibrator.do_save()
+            break
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
