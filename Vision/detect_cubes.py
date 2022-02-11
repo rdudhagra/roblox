@@ -25,22 +25,22 @@ def threshold_for_color(hsv_img, color):
     if low_H > high_H:
         # Wrap around
         frame_threshold = cv2.bitwise_or(
-            cv2.inRange(hsv_img, (low_H, low_S, low_V),
-                        (360, high_S, high_V)),
-            cv2.inRange(hsv_img, (0, low_S, low_V),
-                        (high_H, high_S, high_V)),
+            cv2.inRange(hsv_img, (low_H, low_S, low_V), (360, high_S, high_V)),
+            cv2.inRange(hsv_img, (0, low_S, low_V), (high_H, high_S, high_V)),
         )
     else:
-        frame_threshold = cv2.inRange(
-            hsv_img, (low_H, low_S, low_V), (high_H, high_S, high_V))
+        frame_threshold = cv2.inRange(hsv_img, (low_H, low_S, low_V), (high_H, high_S, high_V))
 
-    frame_threshold = cv2.morphologyEx(
-        frame_threshold, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)))
+    morph_ellipse = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    frame_threshold = cv2.morphologyEx(frame_threshold, cv2.MORPH_OPEN, morph_ellipse)
     return frame_threshold
 
 def detect_squares(threshold_img) -> "list(cv2.RotatedRect)":
     contours, _ = cv2.findContours(threshold_img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    # Filter contours by area
     squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 1000]
+    # Filter squares by aspect ratio
+    squares = [s for s in squares if 0.6 <= s[1][0] / s[1][1] <= 1.7]
     return squares
 
 if __name__ == "__main__":
