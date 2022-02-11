@@ -1,3 +1,4 @@
+import argparse
 import cv2
 import numpy as np
 import pickle
@@ -43,6 +44,8 @@ def detect_squares(threshold_img) -> "list(cv2.RotatedRect)":
     return squares
 
 if __name__ == "__main__":
+    args = parser.parse_args()
+
     # Read frames from webcam
     cap = VideoCaptureThreading(src=4, width=3840, height=2160).start()
 
@@ -50,6 +53,7 @@ if __name__ == "__main__":
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
     # Show frames until 'q' is pressed
+    frames_per_loop = 30 // args.cap_fps
     while True:
         # Read frame
         ret, frame = cap.read()
