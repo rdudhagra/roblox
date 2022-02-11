@@ -5,6 +5,13 @@ import pickle
 
 from video_capture_threading import VideoCaptureThreading
 
+# Command line argument parsing
+parser = argparse.ArgumentParser()
+parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
+parser.add_argument("--cap_width", type=int, default=3840, help="Camera capture width")
+parser.add_argument("--cap_height", type=int, default=2160, help="Camera capture height")
+parser.add_argument("--cap_fps", type=int, default=30, help="Cameria capture FPS")
+
 # Read cube calibration data
 with open("cube_calibration_data.pkl", "rb") as f:
     [cube_color_mins, cube_color_maxs] = pickle.load(f)
@@ -47,7 +54,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Read frames from webcam
-    cap = VideoCaptureThreading(src=4, width=3840, height=2160).start()
+    cap = VideoCaptureThreading(src=args.cam_port, width=args.cap_width, height=args.cap_height, fps=args.cap_fps).start()
 
     # Create a window
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)

@@ -8,12 +8,12 @@ import cv2
 #################################################################################################################
 
 class VideoCaptureThreading:
-    def __init__(self, src=0, width=1920, height=1080):
+    def __init__(self, src=0, width=1920, height=1080, fps=30):
         self.src = src
         self.cap = cv2.VideoCapture(self.src)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-        self.cap.set(cv2.CAP_PROP_FPS, 30)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
         self.grabbed, self.frame = self.cap.read()
         self.started = False
         self.read_lock = threading.Lock()
