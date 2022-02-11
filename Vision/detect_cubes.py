@@ -5,13 +5,6 @@ import pickle
 
 from video_capture_threading import VideoCaptureThreading
 
-# Command line argument parsing
-parser = argparse.ArgumentParser()
-parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
-parser.add_argument("--cap_width", type=int, default=3840, help="Camera capture width")
-parser.add_argument("--cap_height", type=int, default=2160, help="Camera capture height")
-parser.add_argument("--cap_fps", type=int, default=30, help="Cameria capture FPS")
-
 # Read cube calibration data
 with open("cube_calibration_data.pkl", "rb") as f:
     [cube_color_mins, cube_color_maxs] = pickle.load(f)
@@ -51,6 +44,12 @@ def detect_squares(threshold_img) -> "list(cv2.RotatedRect)":
     return squares
 
 if __name__ == "__main__":
+    # Command line argument parsing
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
+    parser.add_argument("--cap_width", type=int, default=3840, help="Camera capture width")
+    parser.add_argument("--cap_height", type=int, default=2160, help="Camera capture height")
+    parser.add_argument("--cap_fps", type=int, default=30, help="Cameria capture FPS")
     args = parser.parse_args()
 
     # Read frames from webcam
@@ -60,7 +59,6 @@ if __name__ == "__main__":
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
     # Show frames until 'q' is pressed
-    frames_per_loop = 30 // args.cap_fps
     while True:
         # Read frame
         ret, frame = cap.read()
@@ -89,3 +87,4 @@ if __name__ == "__main__":
 
     # Stop the camera
     cap.stop()
+    cv2.destroyAllWindows()

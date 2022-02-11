@@ -9,6 +9,8 @@ import time
 from functools import reduce
 from io import BytesIO
 
+from video_capture_threading import VideoCaptureThreading
+
 class ChessboardInfo:
     def __init__(self, n_cols = 0, n_rows = 0, dim = 0.0):
         self.n_cols = n_cols
@@ -537,20 +539,14 @@ if __name__ == "__main__":
     parser.add_argument("--cap_fps", type=int, default=30, help="Camera capture FPS")
     args = parser.parse_args()
 
-    cam = cv2.VideoCapture(args.cam_port)
+    cap = VideoCaptureThreading(src=args.cam_port, width=args.cap_width, height=args.cap_height, fps=args.cap_fps).start()
     
     # Initialize monocular calibrator with 8x6 chessboard
     calibrator = MonoCalibrator([ChessboardInfo(8, 6, 0.108)])
 
-    # Set camera properties
-    cam.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, args.cap_width)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, args.cap_height)
-    cam.set(cv2.CAP_PROP_FPS, args.cap_fps)
-
     while True:
         # Read frame
-        (ret, frame) = cam.read()
+        (ret, frame) = cap.read()
 
         # Feed frame into calibrator
         (scrib, params, linear_error) = calibrator.handle_frame(frame)
@@ -558,15 +554,19 @@ if __name__ == "__main__":
 
         # Check if calibration is good enough
         calib_result = calibrator.compute_goodenough()
-        calib_msg = ["%s: %.3f-%.3f [%.1f]" % elt for elt in calib_result]
-        print(" / ".join(calib_msg))
+        calib_msg = " / ".join(["%s: %.3f-%.3f [%.1f]" % elt for elt in calib_result])
+        print(calib_msg)
+
         if calibrator.goodenough:
+            print("Enough samples collected, performing calibration...")
             calibrator.do_calibration(dump=True)
             calibrator.do_save()
             break
 
+        # Check if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    cam.release()
+    # Stop the camera
+    cap.stop()
     cv2.destroyAllWindows()
