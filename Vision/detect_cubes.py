@@ -47,7 +47,7 @@ def threshold_for_color(hsv_img, color):
 
 def detect_squares(threshold_img) -> "list(cv2.RotatedRect)":
     contours, _ = cv2.findContours(threshold_img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 5000]
+    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 1000]
     return squares
 
 if __name__ == "__main__":
