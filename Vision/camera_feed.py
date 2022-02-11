@@ -7,13 +7,20 @@ if __name__ == "__main__":
     # Command line argument parsing
     parser = argparse.ArgumentParser()
     parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
-    parser.add_argument("--cap_width", type=int, default=3840, help="Camera capture width")
-    parser.add_argument("--cap_height", type=int, default=2160, help="Camera capture height")
-    parser.add_argument("--cap_fps", type=int, default=30, help="Camera capture FPS")
+    parser.add_argument("--cap_width", "-x", type=int, default=3840, help="Camera capture width")
+    parser.add_argument("--cap_height", "-y", type=int, default=2160, help="Camera capture height")
+    parser.add_argument("--cap_fps", "-f", type=int, default=30, help="Camera capture FPS")
+    parser.add_argument("--cam_calib", "-c", type=str, default="camera_calibration_data.pkl", help="Camera calibration")
     args = parser.parse_args()
 
     # Read frames from webcam
-    cap = VideoCaptureThreading(src=args.cam_port, width=args.cap_width, height=args.cap_height, fps=args.cap_fps).start()
+    cap = VideoCaptureThreading(
+        port=args.cam_port,
+        width=args.cap_width,
+        height=args.cap_height,
+        fps=args.cap_fps,
+        calib=args.cam_calib,
+    ).start()
 
     # Show frames until 'q' is pressed
     while True:

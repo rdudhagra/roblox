@@ -3,7 +3,6 @@ import argparse
 import math
 import numpy as np
 import pickle
-import random
 import tarfile
 import time
 from functools import reduce
@@ -460,7 +459,7 @@ class MonoCalibrator(Calibrator):
         self.cal_fromcorners(self.good_corners)
         self.calibrated = True
         if dump:
-            with open("camera_calibration_%08x.pkl" % random.getrandbits(32), "wb") as f:
+            with open("camera_calibration_dump.pkl", "wb") as f:
                 pickle.dump((self.size, self.good_corners), f)
 
     def do_tarfile_save(self, tf):
@@ -488,11 +487,21 @@ class MonoCalibrator(Calibrator):
                    if (f.startswith("left ") and (f.endswith(".pgm") or f.endswith("png")))]
         self.cal(limages)
 
-    def do_save(self):
-        filename = "calibrationdata.tar.gz"
-        tf = tarfile.open(filename, "w:gz")
+    def do_save(self, filename="camera_calibration_data"):
+        tf = tarfile.open(filename + ".tar.gz", "w:gz")
         self.do_tarfile_save(tf)
         tf.close()
+
+        with open(filename + ".pkl", "wb") as f:
+            pickle.dump({
+                "width": self.size[0],
+                "height": self.size[1],
+                "camera_matrix": self.intrinsics,
+                "distortion": self.distortion,
+                "rectification": self.R,
+                "projection": self.P,
+            }, f)
+
         print("Wrote calibration data to", filename)
 
     def ost(self):
@@ -534,12 +543,17 @@ class MonoCalibrator(Calibrator):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
-    parser.add_argument("--cap_width", type=int, default=10000, help="Camera capture width")
-    parser.add_argument("--cap_height", type=int, default=10000, help="Camera capture height")
-    parser.add_argument("--cap_fps", type=int, default=30, help="Camera capture FPS")
+    parser.add_argument("--cap_width", "-x", type=int, default=10000, help="Camera capture width")
+    parser.add_argument("--cap_height", "-y", type=int, default=10000, help="Camera capture height")
+    parser.add_argument("--cap_fps", "-f", type=int, default=30, help="Camera capture FPS")
     args = parser.parse_args()
 
-    cap = VideoCaptureThreading(src=args.cam_port, width=args.cap_width, height=args.cap_height, fps=args.cap_fps).start()
+    cap = VideoCaptureThreading(
+        port=args.cam_port,
+        width=args.cap_width,
+        height=args.cap_height,
+        fps=args.cap_fps
+    ).start()
     
     # Initialize monocular calibrator with 8x6 chessboard
     calibrator = MonoCalibrator([ChessboardInfo(8, 6, 0.108)])
@@ -554,12 +568,13 @@ if __name__ == "__main__":
 
         # Check if calibration is good enough
         calib_result = calibrator.compute_goodenough()
-        calib_msg = " / ".join(["%s: %.3f-%.3f [%.1f]" % elt for elt in calib_result])
-        print(calib_msg)
+        calib_msg = " / ".join(["%s: %.3f-%.3f [%.1f]" % elt for elt in calib_result]) if calib_result is not None else None
+        if calib_msg is not None:
+            print(calib_msg)
 
         if calibrator.goodenough:
             print("Enough samples collected, performing calibration...")
-            calibrator.do_calibration(dump=True)
+            calibrator.do_calibration()
             calibrator.do_save()
             break
 

@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import pickle
 
+from video_capture_threading import VideoCaptureThreading
+
 max_value = 255
 max_value_H = 360 // 2
 low_H = 0
@@ -18,14 +20,6 @@ low_V_name = 'Low V'
 high_H_name = 'High H'
 high_S_name = 'High S'
 high_V_name = 'High V'
-
-# Command line argument parsing
-parser = argparse.ArgumentParser()
-parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
-parser.add_argument("--cap_width", type=int, default=3840, help="Camera capture width")
-parser.add_argument("--cap_height", type=int, default=2160, help="Camera capture height")
-parser.add_argument("--cap_fps", type=int, default=30, help="Camera capture FPS")
-
 
 def on_low_H_thresh_trackbar(val):
     global low_H
@@ -76,14 +70,23 @@ def on_high_V_thresh_trackbar(val):
 
 
 if __name__ == "__main__":
+    # Command line argument parsing
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
+    parser.add_argument("--cap_width", "-x", type=int, default=3840, help="Camera capture width")
+    parser.add_argument("--cap_height", "-y", type=int, default=2160, help="Camera capture height")
+    parser.add_argument("--cap_fps", "-f", type=int, default=30, help="Camera capture FPS")
+    parser.add_argument("--cam_calib", "-c", type=str, default="camera_calibration_data.pkl", help="Camera calibration")
     args = parser.parse_args()
 
     # Read frames from webcam
-    cap = cv2.VideoCapture(args.cam_port)
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG")
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, args.cap_width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, args.cap_height)
-    cap.set(cv2.CAP_PROP_FPS, args.cap_fps)
+    cap = VideoCaptureThreading(
+        port=args.cam_port,
+        width=args.cap_width,
+        height=args.cap_height,
+        fps=args.cap_fps,
+        calib=args.cam_calib,
+    ).start()
     
     # Create calibration window
     cv2.namedWindow(window_detection_name)
@@ -116,12 +119,9 @@ if __name__ == "__main__":
         cv2.setTrackbarPos(low_V_name, window_detection_name, low_V)
         cv2.setTrackbarPos(high_V_name, window_detection_name, high_V)
 
-        frames_per_loop = 30 // args.cap_fps
         while True:
-            for i in range(frames_per_loop):
-                # Flush stale frames from framebuffer
-                cap.grab()
-            (ret, frame) = cap.retrieve()
+            # Read frame
+            ret, frame = cap.read()
 
             if frame is None:
                 break
@@ -131,19 +131,15 @@ if __name__ == "__main__":
             if low_H > high_H:
                 # Wrap around
                 frame_threshold = cv2.bitwise_or(
-                    cv2.inRange(frame_HSV, (low_H, low_S, low_V),
-                                (max_value_H, high_S, high_V)),
-                    cv2.inRange(frame_HSV, (0, low_S, low_V),
-                                (high_H, high_S, high_V)),
+                    cv2.inRange(frame_HSV, (low_H, low_S, low_V), (max_value_H, high_S, high_V)),
+                    cv2.inRange(frame_HSV, (0, low_S, low_V), (high_H, high_S, high_V)),
                 )
             else:
-                frame_threshold = cv2.inRange(
-                    frame_HSV, (low_H, low_S, low_V), (high_H, high_S, high_V))
+                frame_threshold = cv2.inRange(frame_HSV, (low_H, low_S, low_V), (high_H, high_S, high_V))
 
-            frame_combined = cv2.max(frame, np.repeat(
-                frame_threshold[:, :, np.newaxis], 3, axis=2))
-            frame_with_text = cv2.putText(frame_combined, f"Adjust sliders to select only {color} cubes:", (
-                10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (100, 100, 100), 5)
+            frame_combined = cv2.max(frame, np.repeat(frame_threshold[:, :, np.newaxis], 3, axis=2))
+            frame_with_text = cv2.putText(frame_combined, f"Adjust sliders to select only {color} cubes:",
+                (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (100, 100, 100), 5)
 
             cv2.imshow(window_detection_name, frame_with_text)
 
