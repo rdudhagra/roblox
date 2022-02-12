@@ -62,9 +62,10 @@ def detect_apriltags(frame):
 
 def get_robot_poses(tags, img2world_robot):
     # Returns position and orientation of robot in world frame
-    if img2world_robot is None:
-        return None
     robots = {}
+    if img2world_robot is None:
+        return robots
+
     for tag in tags:
         if tag.tag_id in robot_ids:
             corners = transform_square(img2world_robot, tag.corners)

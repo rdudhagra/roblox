@@ -54,22 +54,27 @@ def detect_squares(threshold_img):
     squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 500]
     squares = [s for s in squares if 0.6 <= s[1][0] / s[1][1] <= 1.7]
     squares = [cv2.boxPoints(sq) for sq in squares]
-
+    
     return squares
 
 def get_cube_poses(squares, img2world_cube):
     # Returns position and orientation of cubes in world frame
-    if img2world_cube is None:
-        return None
-
     cubes = []
+    if img2world_cube is None:
+        return cubes
+
     for sq in squares:
         corners = transform_square(img2world_cube, sq)
         center = np.mean(sq, axis=0)
         th = box_angle(sq, np.pi/2)
+        th = np.pi / 2 - th # Make cube angle consistent with robot angle
         cubes.append((center, th))
         log(f"Square: pos={center}, th={th * 180 / np.pi}")
     return cubes
+
+def draw_squares(frame, squares):
+    for sq in squares:
+        cv2.drawContours(frame, [np.int0(sq)], 0, (0, 0, 0), 3)
 
 if __name__ == "__main__":
     # Command line argument parsing
@@ -106,8 +111,8 @@ if __name__ == "__main__":
 
             # Find contours
             squares = detect_squares(thresh_img)
-            for sq in squares:
-                cv2.drawContours(frame, [np.int0(sq)], 0, (0, 0, 0), 3)
+            draw_squares(frame, squares)
+
         cv2.imshow("frame", frame)
 
         # Check if 'q' is pressed
