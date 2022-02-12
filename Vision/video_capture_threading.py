@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 import pickle
 import threading
 
@@ -31,6 +32,14 @@ class VideoCapture:
         for i in range(frames_per_loop):
             self.cap.grab()
         grabbed, frame = self.cap.retrieve()
+
+        # Perform white balancing
+        brightest_coords = np.argmax(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+        brightest_pix = frame.reshape((-1, 3))[brightest_coords]
+        frame[:,:,0] = np.array(np.array(frame[:,:,0], dtype=np.float32) * 255.0 / brightest_pix[0], dtype=np.uint8)
+        frame[:,:,1] = np.array(np.array(frame[:,:,1], dtype=np.float32) * 255.0 / brightest_pix[1], dtype=np.uint8)
+        frame[:,:,2] = np.array(np.array(frame[:,:,2], dtype=np.float32) * 255.0 / brightest_pix[2], dtype=np.uint8)
+
         return grabbed, frame
 
     def read_calib(self):
@@ -84,6 +93,14 @@ class VideoCaptureThreading:
         with self.read_lock:
             frame = self.frame.copy()
             grabbed = self.grabbed
+        
+        # Perform white balancing
+        brightest_coords = np.argmax(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+        brightest_pix = frame.reshape((-1, 3))[brightest_coords]
+        frame[:,:,0] = np.array(np.array(frame[:,:,0], dtype=np.float32) * 255.0 / brightest_pix[0], dtype=np.uint8)
+        frame[:,:,1] = np.array(np.array(frame[:,:,1], dtype=np.float32) * 255.0 / brightest_pix[1], dtype=np.uint8)
+        frame[:,:,2] = np.array(np.array(frame[:,:,2], dtype=np.float32) * 255.0 / brightest_pix[2], dtype=np.uint8)
+
         return grabbed, frame
 
     def read_calib(self):
