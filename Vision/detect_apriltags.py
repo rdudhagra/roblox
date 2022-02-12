@@ -14,7 +14,7 @@ tag_dimy = 60
 field_dimx = 840 # 11 x 3 = 33in
 field_dimy = 650 # 8.5 x 3 = 25.5in
 
-# Apriltag tag_id's to recognize => Position of tag center in world coordinates
+# Dict from apriltag tag_id's to recognize => Position of tag center in world coordinates
 (x1, x2) = (3 * tag_dimx / 2, field_dimx - 3 * tag_dimx / 2)
 (y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
 y1 += tag_dimy
@@ -35,11 +35,20 @@ corners_robot = { # Same height as robot
     7: np.array([x2, y2]),
 }
 
+robot_ids = [10, 11]
+
 def transform_point(transform, point):
     # Apply a 3x3 perspective transform to a 2D point (x,y)
     x = np.array([point[0], point[1], 1])
     out = transform @ x
     return np.array([out[0] / out[2], out[1] / out[2]])
+
+def clamp_angle(theta):
+    while theta < 0:
+        theta += 2 * np.pi
+    while theta >= 2 * np.pi:
+        theta -= 2 * np.pi
+    return theta
 
 def detect_apriltags(frame):
     # Detects apriltags in current frame
@@ -47,12 +56,20 @@ def detect_apriltags(frame):
     tags = detector.detect(gray)
     return tags
 
-def find_apriltag_corners(tags, ids_to_detect):
-    # ids_to_detect: List of apriltag tag_id's to detect
-    # Returns: On success, a dict mapping tag_id => image coordinates of tag center
-    #          On failure, returns None
+def get_robot_poses(tags, robot_ids, img2world_robot):
+    # Returns position and orientation of robot in world frame
+    if img2world_robot is None:
+        return None
+    robots = {}
+    for tag in tags:
+        if tag.tag_id in robot_ids:
+            (c0, c1, c2, c3) = [transform_point(img2world_robot, c) for c in tag.corners]
+            fwd = c0 - c3
+            th = clamp_angle(np.arctan2(fwd[1], fwd[0]))
+            robots[tag.tag_id] = (tag.center, th)
+            print(f"Robot {tag.tag_id}: pos={tag.center}, th={th * 180 / np.pi}")
+    return robots
 
-    return corners
 
 def get_img2world_transform(tags, corners_to_detect):
     # tags: Output of apriltag detection algorithm
@@ -154,6 +171,9 @@ if __name__ == "__main__":
         img2world_robot = get_img2world_transform(tags, corners_robot)
         print("Testing robot height corners")
         test_img2world_transform(tags, img2world_robot, corners_robot)
+
+        # Find robot poses
+        get_robot_poses(tags, robot_ids, img2world_robot)
 
         # Check if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
