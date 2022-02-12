@@ -5,6 +5,13 @@ import numpy as np
 
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
+if __name__ == "__main__":
+    def log(message):
+        print(message)
+else:
+    def log(message):
+        pass
+
 # Initialize apriltag detector
 detector = apriltag.Detector(apriltag.DetectorOptions(families="tag36h11"))
 
@@ -67,7 +74,7 @@ def get_robot_poses(tags, robot_ids, img2world_robot):
             fwd = c0 - c3
             th = clamp_angle(np.arctan2(fwd[1], fwd[0]))
             robots[tag.tag_id] = (tag.center, th)
-            print(f"Robot {tag.tag_id}: pos={tag.center}, th={th * 180 / np.pi}")
+            log(f"Robot {tag.tag_id}: pos={tag.center}, th={th * 180 / np.pi}")
     return robots
 
 
@@ -124,10 +131,10 @@ def test_img2world_transform(tags, img2world, corners_to_detect):
         world_pos_exp = corners_to_detect[tag_id]
         world_pos_act = transform_point(img2world, img_pos)
         error += np.linalg.norm(world_pos_exp - world_pos_act)
-        print(f"Tag {tag_id}: Expected {tuple(world_pos_exp)}, Actual {tuple(world_pos_act)}")
+        log(f"Tag {tag_id}: Expected {tuple(world_pos_exp)}, Actual {tuple(world_pos_act)}")
     error /= len(corners)
 
-    print(f"Error: {error}")
+    log(f"Error: {error}")
     return error
 
 
