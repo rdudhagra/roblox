@@ -6,6 +6,14 @@ import pickle
 from utils import transform_point, transform_square, clamp_angle, box_angle
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
+# Initialize logger
+if __name__ == "__main__":
+    def log(message):
+        print(message)
+else:
+    def log(message):
+        pass
+
 # Read cube calibration data
 with open("cube_calibration_data.pkl", "rb") as f:
     [cube_color_mins, cube_color_maxs] = pickle.load(f)
@@ -60,7 +68,7 @@ def get_cube_poses(squares, img2world_cube):
         center = np.mean(sq, axis=0)
         th = box_angle(sq, np.pi/2)
         cubes.append((center, th))
-        print(f"Square: pos={center}, th={th * 180 / np.pi}")
+        log(f"Square: pos={center}, th={th * 180 / np.pi}")
     return cubes
 
 if __name__ == "__main__":
