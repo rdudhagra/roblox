@@ -155,3 +155,7 @@ if __name__ == "__main__":
     # Save the mean and standard deviation values to a pickle file
     with open("cube_calibration_data.pkl", "wb") as f:
         pickle.dump([color_min_hsv, color_max_hsv], f)
+
+    # Stop the camera
+    cap.stop()
+    cv2.destroyAllWindows()

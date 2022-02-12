@@ -51,7 +51,7 @@ def detect_squares(threshold_img):
     contours, _ = cv2.findContours(threshold_img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     # Filter squares by area and aspect ratio
-    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 500]
+    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 250]
     squares = [s for s in squares if 0.6 <= s[1][0] / s[1][1] <= 1.7]
     squares = [cv2.boxPoints(sq) for sq in squares]
     
@@ -65,9 +65,8 @@ def get_cube_poses(squares, img2world_cube):
 
     for sq in squares:
         corners = transform_square(img2world_cube, sq)
-        center = np.mean(sq, axis=0)
-        th = box_angle(sq, np.pi/2)
-        th = np.pi / 2 - th # Make cube angle consistent with robot angle
+        center = np.mean(corners, axis=0)
+        th = box_angle(corners, np.pi/2)
         cubes.append((center, th))
         log(f"Square: pos={center}, th={th * 180 / np.pi}")
     return cubes
