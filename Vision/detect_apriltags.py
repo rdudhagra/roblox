@@ -91,6 +91,7 @@ if __name__ == "__main__":
     parser.add_argument("--cap_height", "-y", type=int, default=2160, help="Camera capture height")
     parser.add_argument("--cap_fps", "-f", type=int, default=30, help="Camera capture FPS")
     parser.add_argument("--cam_calib", "-c", type=str, default="camera_calibration_data.pkl", help="Camera calibration")
+    parser.add_argument("--use_calib", "-s", action="store_true")
     args = parser.parse_args()
 
     # Read frames from webcam
@@ -108,7 +109,7 @@ if __name__ == "__main__":
     # Show frames until 'q' is pressed
     while True:
         # Read frame
-        ret, frame = cap.read()
+        ret, frame = cap.read_calib() if args.use_calib else cap.read()
         cv2.imshow("frame", frame)
 
         tags = detect_apriltags(frame)
