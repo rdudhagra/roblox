@@ -1,3 +1,4 @@
-pyserial
+apriltag
 cv2
 numpy
+pyserial

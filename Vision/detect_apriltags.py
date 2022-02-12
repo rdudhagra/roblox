@@ -1,0 +1,92 @@
+import apriltag
+import argparse
+import cv2
+import numpy as np
+
+from video_capture_threading import VideoCaptureThreading as VideoCapture
+
+detector = apriltag.Detector(apriltag.DetectorOptions(families="tag36h11"))
+
+def detect_apriltags(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    tags = detector.detect(gray)
+    print(tags)
+    return tags
+
+def get_img2world_transform(tags, w=1, h=1):
+    # Uses linear least squares to fit an image-to-world affine transform to the given tags
+    # Assumes tag1 (0, 0), tag2 (w, 0), tag3 (0, h), tag4 (w, h)
+
+    # Find tag centers in image
+    c = {}
+    for tag in tags:
+        c[tag.tag_id] = tag.center
+
+    # Abort if four corners of field are not visible
+    for key in [0,1,2,3]:
+        if key not in c:
+            return None
+
+    # Build homography matrices
+    # Reference: http://cs.cmu.edu/~16385/lectures/lecture7.pdf, slide 79
+    b = np.transpose(np.array([0, 0, w, 0, 0, h, w, h]))
+    A = np.array([
+        [c[0][0], c[0][1], 1, 0, 0, 0], # tag0_image
+        [0, 0, 0, c[0][0], c[0][1], 1],
+        [c[1][0], c[1][1], 1, 0, 0, 0], # tag1_image
+        [0, 0, 0, c[1][0], c[1][1], 1],
+        [c[2][0], c[2][1], 1, 0, 0, 0], # tag2_image
+        [0, 0, 0, c[2][0], c[2][1], 1],
+        [c[3][0], c[3][1], 1, 0, 0, 0], # tag3_image
+        [0, 0, 0, c[3][0], c[3][1], 1],
+    ])
+
+    # Solve linear least squares
+    AT = np.transpose(A)
+    x = np.linalg.inv(AT @ A) @ AT @ b
+
+    # Construct 3x3 matrix from solution
+    img2world = np.array([
+        [x[0], x[1], x[2]],
+        [x[3], x[4], x[5]],
+        [0, 0, 1],
+    ])
+    return img2world
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
+    parser.add_argument("--cap_width", "-x", type=int, default=3840, help="Camera capture width")
+    parser.add_argument("--cap_height", "-y", type=int, default=2160, help="Camera capture height")
+    parser.add_argument("--cap_fps", "-f", type=int, default=30, help="Camera capture FPS")
+    parser.add_argument("--cam_calib", "-c", type=str, default="camera_calibration_data.pkl", help="Camera calibration")
+    args = parser.parse_args()
+
+    # Read frames from webcam
+    cap = VideoCapture(
+        port=args.cam_port,
+        width=args.cap_width,
+        height=args.cap_height,
+        fps=args.cap_fps,
+        calib=args.cam_calib,
+    ).start()
+
+    # Create a window
+    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+
+    # Show frames until 'q' is pressed
+    while True:
+        # Read frame
+        ret, frame = cap.read()
+        cv2.imshow("frame", frame)
+
+        tags = detect_apriltags(frame)
+        img2world = get_img2world_transform(tags)
+
+        # Check if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    # Release the camera
+    cap.stop()
+    cv2.destroyAllWindows()
