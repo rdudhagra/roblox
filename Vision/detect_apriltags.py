@@ -3,6 +3,7 @@ import argparse
 import cv2
 import numpy as np
 
+from utils import transform_point, clamp_angle
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
 if __name__ == "__main__":
@@ -44,19 +45,6 @@ corners_robot = { # Same height as robot
 
 robot_ids = [10, 11]
 
-def transform_point(transform, point):
-    # Apply a 3x3 perspective transform to a 2D point (x,y)
-    x = np.array([point[0], point[1], 1])
-    out = transform @ x
-    return np.array([out[0] / out[2], out[1] / out[2]])
-
-def clamp_angle(theta):
-    while theta < 0:
-        theta += 2 * np.pi
-    while theta >= 2 * np.pi:
-        theta -= 2 * np.pi
-    return theta
-
 def detect_apriltags(frame):
     # Detects apriltags in current frame
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -76,7 +64,6 @@ def get_robot_poses(tags, robot_ids, img2world_robot):
             robots[tag.tag_id] = (tag.center, th)
             log(f"Robot {tag.tag_id}: pos={tag.center}, th={th * 180 / np.pi}")
     return robots
-
 
 def get_img2world_transform(tags, corners_to_detect):
     # tags: Output of apriltag detection algorithm
