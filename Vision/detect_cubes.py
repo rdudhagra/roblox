@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import pickle
 
+from utils import transform_point, transform_square, clamp_angle, box_angle
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
 # Read cube calibration data
@@ -35,13 +36,32 @@ def threshold_for_color(hsv_img, color):
     frame_threshold = cv2.morphologyEx(frame_threshold, cv2.MORPH_OPEN, morph_ellipse)
     return frame_threshold
 
-def detect_squares(threshold_img) -> "list(cv2.RotatedRect)":
+def detect_squares(threshold_img):
+    # Returns a list of cv2.RotatedRect
+
+    # Use OpenCV to find contours
     contours, _ = cv2.findContours(threshold_img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    # Filter contours by area
-    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 1000]
-    # Filter squares by aspect ratio
+
+    # Filter squares by area and aspect ratio
+    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 500]
     squares = [s for s in squares if 0.6 <= s[1][0] / s[1][1] <= 1.7]
+    squares = [cv2.boxPoints(sq) for sq in squares]
+
     return squares
+
+def get_cube_poses(squares, img2world_cube):
+    # Returns position and orientation of cubes in world frame
+    if img2world_cube is None:
+        return None
+
+    cubes = []
+    for sq in squares:
+        corners = transform_square(img2world_cube, sq)
+        center = np.mean(sq, axis=0)
+        th = box_angle(sq, np.pi/2)
+        cubes.append((center, th))
+        print(f"Square: pos={center}, th={th * 180 / np.pi}")
+    return cubes
 
 if __name__ == "__main__":
     # Command line argument parsing
@@ -75,18 +95,11 @@ if __name__ == "__main__":
         # Show frame
         for color in ["red", "green", "blue", "yellow", "purple", "orange"]:
             thresh_img = threshold_for_color(hsv_img, color)
-            # keypoints = detect_blobs(thresh_img)
-
-            # nice_debug_img = cv2.max(frame, np.repeat(
-            #     thresh_img[:, :, np.newaxis], 3, axis=2))
-            # for keypoint in keypoints:
-            #     cv2.circle(final_img, (int(keypoint.pt[0]), int(keypoint.pt[1])),
-            #             int(keypoint.size/2), (0, 0, 0), 5)
 
             # Find contours
             squares = detect_squares(thresh_img)
             for sq in squares:
-                cv2.drawContours(frame, [np.int0(cv2.boxPoints(sq))], 0, (0, 0, 0), 3)
+                cv2.drawContours(frame, [np.int0(sq)], 0, (0, 0, 0), 3)
         cv2.imshow("frame", frame)
 
         # Check if 'q' is pressed

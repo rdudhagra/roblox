@@ -3,9 +3,10 @@ import argparse
 import cv2
 import numpy as np
 
-from utils import transform_point, clamp_angle
+from utils import transform_point, transform_square, clamp_angle, box_angle
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
+# Initialize logger
 if __name__ == "__main__":
     def log(message):
         print(message)
@@ -21,8 +22,6 @@ tag_dimx = 60
 tag_dimy = 60
 field_dimx = 840 # 11 x 3 = 33in
 field_dimy = 650 # 8.5 x 3 = 25.5in
-
-
 
 robot_ids = [10, 11]
 
@@ -61,18 +60,18 @@ def detect_apriltags(frame):
     tags = detector.detect(gray)
     return tags
 
-def get_robot_poses(tags, robot_ids, img2world_robot):
+def get_robot_poses(tags, img2world_robot):
     # Returns position and orientation of robot in world frame
     if img2world_robot is None:
         return None
     robots = {}
     for tag in tags:
         if tag.tag_id in robot_ids:
-            (c0, c1, c2, c3) = [transform_point(img2world_robot, c) for c in tag.corners]
-            fwd = c0 - c3
-            th = clamp_angle(np.arctan2(fwd[1], fwd[0]))
-            robots[tag.tag_id] = (tag.center, th)
-            log(f"Robot {tag.tag_id}: pos={tag.center}, th={th * 180 / np.pi}")
+            corners = transform_square(img2world_robot, tag.corners)
+            center = np.mean(corners, axis=0)
+            th = box_angle(corners)
+            robots[tag.tag_id] = (center, th)
+            log(f"Robot {tag.tag_id}: pos={center}, th={th * 180 / np.pi}")
     return robots
 
 def get_img2world_transform(tags, corner_type):
