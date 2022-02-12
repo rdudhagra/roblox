@@ -22,28 +22,38 @@ tag_dimy = 60
 field_dimx = 840 # 11 x 3 = 33in
 field_dimy = 650 # 8.5 x 3 = 25.5in
 
-# Dict from apriltag tag_id's to recognize => Position of tag center in world coordinates
-(x1, x2) = (3 * tag_dimx / 2, field_dimx - 3 * tag_dimx / 2)
-(y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
-y1 += tag_dimy
-corners_cube = { # Same height as cube
-    0: np.array([x1, y1]),
-    1: np.array([x2, y1]),
-    2: np.array([x1, y2]),
-    3: np.array([x2, y2]),
-}
 
-(x1, x2) = (tag_dimx / 2, field_dimx - tag_dimx / 2)
-(y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
-y1 += tag_dimy
-corners_robot = { # Same height as robot
-    4: np.array([x1, y1]),
-    5: np.array([x2, y1]),
-    6: np.array([x1, y2]),
-    7: np.array([x2, y2]),
-}
 
 robot_ids = [10, 11]
+
+def get_corners_to_detect(corner_type):
+    # Returns: Dict from apriltag tag_id's => Position of tag center in world coordinates
+    if corner_type == "cube":
+        (x1, x2) = (3 * tag_dimx / 2, field_dimx - 3 * tag_dimx / 2)
+        (y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
+        y1 += tag_dimy
+        corners_cube = { # Same height as cube
+            0: np.array([x1, y1]),
+            1: np.array([x2, y1]),
+            2: np.array([x1, y2]),
+            3: np.array([x2, y2]),
+        }
+        return corners_cube
+
+    elif corner_type == "robot":
+        (x1, x2) = (tag_dimx / 2, field_dimx - tag_dimx / 2)
+        (y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
+        y1 += tag_dimy
+        corners_robot = { # Same height as robot
+            4: np.array([x1, y1]),
+            5: np.array([x2, y1]),
+            6: np.array([x1, y2]),
+            7: np.array([x2, y2]),
+        }
+        return corners_robot
+
+    else:
+        return None
 
 def detect_apriltags(frame):
     # Detects apriltags in current frame
@@ -65,13 +75,15 @@ def get_robot_poses(tags, robot_ids, img2world_robot):
             log(f"Robot {tag.tag_id}: pos={tag.center}, th={th * 180 / np.pi}")
     return robots
 
-def get_img2world_transform(tags, corners_to_detect):
+def get_img2world_transform(tags, corner_type):
     # tags: Output of apriltag detection algorithm
     # corners_to_detect: A dict of (tag_id => tag center positions in world)
     # Extract the relevant corners from the list of apriltag detections and
     # use linear least squares to fit an image-to-world affine transform to the tags
     # Returns: The img2world transform on success, or None on failure
     
+    corners_to_detect = get_corners_to_detect(corner_type)
+
     # Find tag centers in image
     corners = {}
     for tag in tags:
@@ -97,9 +109,11 @@ def get_img2world_transform(tags, corners_to_detect):
     img2world = cv2.getPerspectiveTransform(src, dst)
     return img2world
 
-def test_img2world_transform(tags, img2world, corners_to_detect):
+def test_img2world_transform(tags, img2world, corner_type):
     # Tests the accuracy of the img2world transform
     # corners_to_detect: Dict mapping tag_id => world coordinates of tag
+
+    corners_to_detect = get_corners_to_detect(corner_type)
 
     # Find tag centers in image
     corners = {}
@@ -157,14 +171,14 @@ if __name__ == "__main__":
         tags = detect_apriltags(frame)
 
         # Find img2world transform for cube height corners
-        img2world_cube = get_img2world_transform(tags, corners_cube)
+        img2world_cube = get_img2world_transform(tags, "cube")
         print("Testing cube height corners")
-        test_img2world_transform(tags, img2world_cube, corners_cube)
+        test_img2world_transform(tags, img2world_cube, "cube")
 
         # Find img2world transform for robot height corners
-        img2world_robot = get_img2world_transform(tags, corners_robot)
+        img2world_robot = get_img2world_transform(tags, "robot")
         print("Testing robot height corners")
-        test_img2world_transform(tags, img2world_robot, corners_robot)
+        test_img2world_transform(tags, img2world_robot, "robot")
 
         # Find robot poses
         get_robot_poses(tags, robot_ids, img2world_robot)
