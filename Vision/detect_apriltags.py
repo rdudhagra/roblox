@@ -10,8 +10,39 @@ detector = apriltag.Detector(apriltag.DetectorOptions(families="tag36h11"))
 def detect_apriltags(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     tags = detector.detect(gray)
-    print(tags)
     return tags
+
+def apply_transform(transform, point):
+    x = np.array([point[0], point[1], 1])
+    out = transform @ x
+    return out[:2]
+
+def test_img2world_transform(tags, transform, w=1, h=1):
+    # Tests the accuracy of the img2world transform
+
+    # Find tag centers in image
+    c_img = {}
+    for tag in tags:
+        if tag.tag_id in [0,1,2,3]:
+            c_img[tag.tag_id] = tag.center
+
+    # Abort if four corners of field are not visible
+    for tag_id in [0,1,2,3]:
+        if tag_id not in c_img:
+            return None
+
+    # Specify actual tag centers in world
+    c_world = {0: (0, 0), 1: (w, 0), 2: (0, h), 3: (w, h)}
+
+    # Find error between actual and expected corner positions
+    error = 0
+    for (tag_id, img_pos) in c_img.items():
+        world_pos_exp = c_world[tag_id]
+        world_pos_act = apply_transform(img2world, img_pos)
+        error += np.linalg.norm(world_pos_exp - world_pos_act)
+        print(f"Tag {tag_id}: Expected {tuple(world_pos_exp)}, Actual {tuple(world_pos_act)}")
+
+    print(f"Error: {error / len(c_img)}")
 
 def get_img2world_transform(tags, w=1, h=1):
     # Uses linear least squares to fit an image-to-world affine transform to the given tags
@@ -82,6 +113,7 @@ if __name__ == "__main__":
 
         tags = detect_apriltags(frame)
         img2world = get_img2world_transform(tags)
+        test_img2world_transform(tags, img2world)
 
         # Check if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
