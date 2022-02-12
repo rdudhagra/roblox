@@ -75,6 +75,31 @@ def draw_squares(frame, squares):
     for sq in squares:
         cv2.drawContours(frame, [np.int0(sq)], 0, (0, 0, 0), 3)
 
+def detect_cubes(frame, img2world_cube):
+    # Detect cubes in the given frame
+    # Returns: (all_cubes, all_thresh, frame)
+    # all_cubes: Dict from color to list of ((x, y), th) of cubes at that index
+    # all_thresh: Binary image of all drivable area
+    # frame: Input frame with cube boundaries drawn on
+
+    # Preprocess image
+    frame_ = frame.copy()
+    hsv_img = preprocess_frame(frame)
+
+    all_thresh = None
+    all_cubes = {}
+    for color in ["red", "green", "blue", "yellow", "purple", "orange"]:
+        thresh_img = threshold_for_color(hsv_img, color)
+        all_thresh = thresh_img if all_thresh is None else np.bitwise_or(all_thresh, thresh_img)
+
+        squares = detect_squares(thresh_img)
+        cubes = get_cube_poses(squares, img2world_cube)
+        all_cubes[color] = cubes
+
+        draw_squares(frame_, squares)
+
+    return (all_cubes, all_thresh, frame_)
+
 if __name__ == "__main__":
     # Command line argument parsing
     parser = argparse.ArgumentParser()
@@ -102,7 +127,6 @@ if __name__ == "__main__":
     while True:
         # Read frame
         ret, frame = cap.read_calib() if args.use_calib else cap.read()
-        hsv_img = preprocess_frame(frame)
 
         # Show frame
         for color in ["red", "green", "blue", "yellow", "purple", "orange"]:

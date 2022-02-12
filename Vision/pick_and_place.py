@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 from detect_apriltags import detect_apriltags, get_img2world_transform, get_robot_poses
-from detect_cubes import preprocess_frame, threshold_for_color, detect_squares, get_cube_poses, draw_squares
+from detect_cubes import detect_cubes
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
 if __name__ == "__main__":
@@ -45,20 +45,7 @@ if __name__ == "__main__":
         get_robot_poses(tags, img2world_robot)
 
         # Detect cubes
-        hsv_img = preprocess_frame(frame)
-
-        all_thresh = None
-        all_cubes = {}
-        for color in ["red", "green", "blue", "yellow", "purple", "orange"]:
-            thresh_img = threshold_for_color(hsv_img, color)
-            all_thresh = thresh_img if all_thresh is None else np.bitwise_or(all_thresh, thresh_img)
-
-            squares = detect_squares(thresh_img)
-            cubes = get_cube_poses(squares, img2world_cube)
-            all_cubes[color] = cubes
-
-            draw_squares(frame, squares)
-
+        (all_cubes, all_thresh, frame) = detect_cubes(frame, img2world_cube)
         cv2.imshow("frame", frame)
 
         for (color, cubes) in all_cubes.items():
