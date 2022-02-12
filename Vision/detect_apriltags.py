@@ -17,27 +17,29 @@ field_dimy = 650 # 8.5 x 3 = 25.5in
 # Apriltag tag_id's to recognize => Position of tag center in world coordinates
 (x1, x2) = (3 * tag_dimx / 2, field_dimx - 3 * tag_dimx / 2)
 (y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
+y1 += tag_dimy
 corners_cube = { # Same height as cube
-    0: (x1, y1),
-    1: (x2, y1),
-    2: (x1, y2),
-    3: (x2, y2),
+    0: np.array([x1, y1]),
+    1: np.array([x2, y1]),
+    2: np.array([x1, y2]),
+    3: np.array([x2, y2]),
 }
 
 (x1, x2) = (tag_dimx / 2, field_dimx - tag_dimx / 2)
 (y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
+y1 += tag_dimy
 corners_robot = { # Same height as robot
-    4: (x1, y1),
-    5: (x2, y1),
-    6: (x1, y2),
-    7: (x2, y2),
+    4: np.array([x1, y1]),
+    5: np.array([x2, y1]),
+    6: np.array([x1, y2]),
+    7: np.array([x2, y2]),
 }
 
-def apply_transform(transform, point):
-    # Apply a 3x3 homogeneous transform to a 2D point (x,y)
+def transform_point(transform, point):
+    # Apply a 3x3 perspective transform to a 2D point (x,y)
     x = np.array([point[0], point[1], 1])
     out = transform @ x
-    return out[:2]
+    return np.array([out[0] / out[2], out[1] / out[2]])
 
 def detect_apriltags(frame):
     # Detects apriltags in current frame
@@ -66,34 +68,22 @@ def get_img2world_transform(tags, corners_to_detect):
             corners[tag.tag_id] = tag.center
 
     # Abort if four corners are not visible
-    for tag_id in ids_to_detect:
+    for tag_id in corners_to_detect.keys():
         if tag_id not in corners:
             return None
 
-    # Build homography matrices
-    # Reference: http://cs.cmu.edu/~16385/lectures/lecture7.pdf, slide 79
-    b = []
-    A = []
-    for (tag_id, (xw, yw)) in corners_to_detect:
+    # Determine source (image) and destination (world) coordinates
+    src = []
+    dst = []
+    for (tag_id, (xw, yw)) in corners_to_detect.items():
         (xi, yi) = corners[tag_id]
+        src.append([xi, yi])
+        dst.append([xw, yw])
+    src = np.array(src, dtype=np.float32)
+    dst = np.array(dst, dtype=np.float32)
 
-        b.append(np.array([[xw], [yw]]))
-        A.append(np.array([[xi, yi, 1., 0., 0., 0.],
-                           [0., 0., 0., xi, yi, 1.]]))
-
-    b = np.concatenate(b, dim=0)
-    A = np.concatenate(A, dim=0)
-
-    # Solve linear least squares
-    AT = np.transpose(A)
-    x = np.linalg.inv(AT @ A) @ AT @ b
-
-    # Construct 3x3 matrix from solution
-    img2world = np.array([
-        [x[0], x[1], x[2]],
-        [x[3], x[4], x[5]],
-        [0, 0, 1],
-    ])
+    # Compute perspective transform
+    img2world = cv2.getPerspectiveTransform(src, dst)
     return img2world
 
 def test_img2world_transform(tags, img2world, corners_to_detect):
@@ -107,7 +97,7 @@ def test_img2world_transform(tags, img2world, corners_to_detect):
             corners[tag.tag_id] = tag.center
 
     # Abort if four corners are not visible
-    for tag_id in ids_to_detect:
+    for tag_id in corners_to_detect.keys():
         if tag_id not in corners:
             return None
 
@@ -115,12 +105,12 @@ def test_img2world_transform(tags, img2world, corners_to_detect):
     error = 0
     for (tag_id, img_pos) in corners.items():
         world_pos_exp = corners_to_detect[tag_id]
-        world_pos_act = apply_transform(img2world, img_pos)
+        world_pos_act = transform_point(img2world, img_pos)
         error += np.linalg.norm(world_pos_exp - world_pos_act)
         print(f"Tag {tag_id}: Expected {tuple(world_pos_exp)}, Actual {tuple(world_pos_act)}")
     error /= len(corners)
 
-    print(f"Error: {error / len(corners)}")
+    print(f"Error: {error}")
     return error
 
 
