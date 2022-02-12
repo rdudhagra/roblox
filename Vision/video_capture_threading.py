@@ -8,8 +8,45 @@ import threading
 #################################################################################################################
 #################################################################################################################
 
+class VideoCapture:
+    def __init__(self, port=0, width=3840, height=2160, fps=30, calib=""):
+        self.port = port
+        self.cap = cv2.VideoCapture(self.port)
+        self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self.cap.set(cv2.CAP_PROP_FPS, fps)
+        if calib is not None and calib != "":
+            with open(calib, "rb") as f:
+                self.calib = pickle.load(f)
+
+    def set(self, var1, var2):
+        self.cap.set(var1, var2)
+
+    def start(self):
+        return self
+
+    def read(self):
+        frames_per_loop = int(30 / self.cap.get(cv2.CAP_PROP_FPS))
+        for i in range(frames_per_loop):
+            self.cap.grab()
+        grabbed, frame = self.cap.retrieve()
+        return grabbed, frame
+
+    def read_calib(self):
+        grabbed, frame = self.read()
+        frame = cv2.undistort(frame, self.calib["camera_matrix"], self.calib["distortion"])
+        return grabbed, frame
+    
+    def stop(self):
+        return
+
+    def __exit__(self, exec_type, exc_value, traceback):
+        self.cap.release()
+
+
 class VideoCaptureThreading:
-    def __init__(self, port=0, width=1920, height=1080, fps=30, calib=""):
+    def __init__(self, port=0, width=3840, height=2160, fps=30, calib=""):
         self.port = port
         self.cap = cv2.VideoCapture(self.port)
         self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
@@ -57,6 +94,6 @@ class VideoCaptureThreading:
     def stop(self):
         self.started = False
         self.thread.join()
-
+    
     def __exit__(self, exec_type, exc_value, traceback):
         self.cap.release()

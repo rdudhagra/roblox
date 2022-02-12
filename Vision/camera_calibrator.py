@@ -8,7 +8,7 @@ import time
 from functools import reduce
 from io import BytesIO
 
-from video_capture_threading import VideoCaptureThreading
+from video_capture_threading import VideoCapture
 
 class ChessboardInfo:
     def __init__(self, n_cols = 0, n_rows = 0, dim = 0.0):
@@ -548,7 +548,7 @@ if __name__ == "__main__":
     parser.add_argument("--cap_fps", "-f", type=int, default=30, help="Camera capture FPS")
     args = parser.parse_args()
 
-    cap = VideoCaptureThreading(
+    cap = VideoCapture(
         port=args.cam_port,
         width=args.cap_width,
         height=args.cap_height,

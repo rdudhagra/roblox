@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import pickle
 
-from video_capture_threading import VideoCaptureThreading
+from video_capture_threading import VideoCaptureThreading as VideoCapture
 
 max_value = 255
 max_value_H = 360 // 2
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Read frames from webcam
-    cap = VideoCaptureThreading(
+    cap = VideoCapture(
         port=args.cam_port,
         width=args.cap_width,
         height=args.cap_height,
