@@ -23,13 +23,13 @@ if __name__ == "__main__":
         calib=args.cam_calib,
     ).start()
 
+    # Create a window
+    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+
     # Show frames until 'q' is pressed
     while True:
         # Read frame
-        if args.show_calib:
-            ret, frame = cap.read_calib()
-        else:
-            ret, frame = cap.read()
+        ret, frame = cap.read_calib() if args.use_calib else cap.read()
         cv2.imshow("frame", frame)
         print("Frame captured: ", frame.shape)
 

@@ -17,22 +17,23 @@ def apply_transform(transform, point):
     out = transform @ x
     return out[:2]
 
-def test_img2world_transform(tags, transform, w=1, h=1):
+def test_img2world_transform(tags, img2world, w, h):
     # Tests the accuracy of the img2world transform
+    # (w, h): Width and height of field
 
     # Find tag centers in image
     c_img = {}
     for tag in tags:
-        if tag.tag_id in [0,1,2,3]:
+        if tag.tag_id in [0, 1, 2, 3]:
             c_img[tag.tag_id] = tag.center
 
     # Abort if four corners of field are not visible
-    for tag_id in [0,1,2,3]:
+    for tag_id in [0, 1, 2, 3]:
         if tag_id not in c_img:
             return None
 
     # Specify actual tag centers in world
-    c_world = {0: (0, 0), 1: (w, 0), 2: (0, h), 3: (w, h)}
+    c_world = {0: (0.0, 0.0), 1: (w, 0.0), 2: (0.0, h), 3: (w, h)}
 
     # Find error between actual and expected corner positions
     error = 0
@@ -44,7 +45,7 @@ def test_img2world_transform(tags, transform, w=1, h=1):
 
     print(f"Error: {error / len(c_img)}")
 
-def get_img2world_transform(tags, w=1, h=1):
+def get_img2world_transform(tags, w, h):
     # Uses linear least squares to fit an image-to-world affine transform to the given tags
     # Assumes tag1 (0, 0), tag2 (w, 0), tag3 (0, h), tag4 (w, h)
 
@@ -85,13 +86,15 @@ def get_img2world_transform(tags, w=1, h=1):
     return img2world
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--cam_port", "-p", type=int, default=0, help="OpenCV camera port")
     parser.add_argument("--cap_width", "-x", type=int, default=3840, help="Camera capture width")
     parser.add_argument("--cap_height", "-y", type=int, default=2160, help="Camera capture height")
     parser.add_argument("--cap_fps", "-f", type=int, default=30, help="Camera capture FPS")
     parser.add_argument("--cam_calib", "-c", type=str, default="camera_calibration_data.pkl", help="Camera calibration")
     parser.add_argument("--use_calib", "-s", action="store_true")
+    parser.add_argument("--field_width", "-w", type=float, default=1.0, help="Field width in real-world units")
+    parser.add_argument("--field_height", "-h", type=float, default=1.0, help="Field height in real-world units")
     args = parser.parse_args()
 
     # Read frames from webcam
@@ -106,6 +109,9 @@ if __name__ == "__main__":
     # Create a window
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
+    # Field dimensions
+    (w, h) = (args.field_width, args.field_height)
+
     # Show frames until 'q' is pressed
     while True:
         # Read frame
@@ -113,8 +119,8 @@ if __name__ == "__main__":
         cv2.imshow("frame", frame)
 
         tags = detect_apriltags(frame)
-        img2world = get_img2world_transform(tags)
-        test_img2world_transform(tags, img2world)
+        img2world = get_img2world_transform(tags, w, h)
+        test_img2world_transform(tags, img2world, w, h)
 
         # Check if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
