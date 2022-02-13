@@ -7,8 +7,10 @@ from detect_cubes import detect_cubes
 from utils import transform_point
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
-cube_radius = 18
-robot_radius = 50
+# Specify radius of each obstacle and how far to stay away from obstacles
+cube_radius = 18  # Radius of cube (mm)
+robot_radius = 80 # Radius of robot (mm)
+avoid_dist = 50   # How far to stay away from each object's bounding box (mm)
 
 def compute_path(start_pose, end_pose, robot_idx, robots, all_cubes):
     # Compute a path from the start to the end, avoiding cubes and other robots
@@ -18,12 +20,12 @@ def compute_path(start_pose, end_pose, robot_idx, robots, all_cubes):
     for (idx, robot) in robots.items():
         if idx != robot_idx:
             ((x, y), th) = robot
-            circles.append((x, y, robot_radius))
+            circles.append((x, y, robot_radius + avoid_dist))
 
     for (color, cubes) in all_cubes.items():
         for cube in cubes:
             ((x, y), th) = cube
-            circles.append((x, y, cube_radius))
+            circles.append((x, y, cube_radius + avoid_dist))
 
     return circles
 
@@ -36,9 +38,10 @@ def show_obstacles(circles, frame, world2img_cube, world2img_robot):
 
     frame_ = frame.copy()
     for (x, y, r) in circles:
-        if r == robot_radius:
+        r_ = r - avoid_dist
+        if r_ == robot_radius:
             (x_img, y_img) = transform_point(world2img_robot, (x, y))
-        elif r == cube_radius:
+        elif r_ == cube_radius:
             (x_img, y_img) = transform_point(world2img_cube, (x, y))
         else:
             continue
