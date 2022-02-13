@@ -10,7 +10,7 @@ from video_capture_threading import VideoCaptureThreading as VideoCapture
 # Specify radius of each obstacle and how far to stay away from obstacles
 cube_radius = 18  # Radius of cube (mm)
 robot_radius = 80 # Radius of robot (mm)
-avoid_dist = 50   # How far to stay away from each object's bounding box (mm)
+avoid_dist = 30   # How far to stay away from each object's bounding box (mm)
 
 def circle_line_intersection(segment, circle):
     # Returns the number of circle-segment intersections
@@ -43,11 +43,8 @@ def circle_line_intersection(segment, circle):
         dist = np.linalg.norm(c - d)
         return 2 if dist <= r else 0
 
-def compute_reachable_cubes(robot_idx, robots, all_cubes):
-    # Filter the list of cubes to those reachable in a straight-line path from the current robot
-    # Returns a list of circles as obstacles to avoid, and a list of reachable cubes
-
-    # Find a list of all obstacles to avoid, as circles
+def compute_obstacle_circles(robot_idx, robots, all_cubes):
+    # Return a list of obstacles to avoid, as circles
     circles = []
     for (idx, robot) in robots.items():
         if idx != robot_idx:
@@ -59,12 +56,15 @@ def compute_reachable_cubes(robot_idx, robots, all_cubes):
             ((x, y), th) = cube
             circles.append((x, y, cube_radius + avoid_dist))
 
-    # Abort if robot is not found yet
-    if robot_idx not in robots:
-        return (circles, {})
+    return circles
+
+def compute_reachable_cubes(robot_pos, all_cubes):
+    # Filter the list of cubes to those reachable in a straight-line path from the current robot
+    # Returns a list of reachable cubes in the same format as all_cubes
+    
+    (rx, ry) = robot_pos
 
     # For each cube, compute whether that cube is reachable
-    ((rx, ry), rth) = robots[robot_idx]
     reachable_cubes = {}
     for (color, cubes) in all_cubes.items():
         reachable_cubes[color] = []
@@ -86,7 +86,7 @@ def compute_reachable_cubes(robot_idx, robots, all_cubes):
             if is_reachable:
                 reachable_cubes[color].append(cube)
 
-    return (circles, reachable_cubes)
+    return reachable_cubes
 
 def show_obstacles(circles, frame, world2img_cube, world2img_robot):
     # Draw the given circles as obstacles in the frame
@@ -148,11 +148,12 @@ if __name__ == "__main__":
         # Find robot poses
         robots = get_robot_poses(tags, img2world_robot)
 
-        # Detect cubes
+        # Detect cubes and compute reachable cubes
         (all_cubes, all_thresh, frame) = detect_cubes(frame, img2world_cube)
+        reachable_cubes = compute_reachable_cubes(robots[8][0], all_cubes) if 8 in robots else {}
 
-        # Compute path
-        (circles, reachable_cubes) = compute_reachable_cubes(8, robots, all_cubes)
+        # Show all cube hitboxes
+        circles = compute_obstacle_circles(8, robots, all_cubes)
         frame = show_obstacles(circles, frame, world2img_cube, world2img_robot)
         
         # Show reachable cubes
