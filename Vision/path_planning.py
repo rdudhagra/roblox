@@ -10,45 +10,83 @@ from video_capture_threading import VideoCaptureThreading as VideoCapture
 # Specify radius of each obstacle and how far to stay away from obstacles
 cube_radius = 18  # Radius of cube (mm)
 robot_radius = 80 # Radius of robot (mm)
-avoid_dist = 40   # How far to stay away from each object's bounding box (mm)
+avoid_dist = 50   # How far to stay away from each object's bounding box (mm)
 
-def compute_path(start_pose, end_pose, robot_idx, robots, all_cubes):
-    # Compute a path from the start to the end, avoiding cubes and other robots
+def circle_line_intersection(segment, circle):
+    # Returns the number of circle-segment intersections
+    # segment: ((ax, ay), (bx, by))
+    # circle: (cx, cy, r)
+    ((ax, ay), (bx, by)) = segment
+    (cx, cy, r) = circle
+    a = np.array([ax, ay])
+    b = np.array([bx, by])
+    c = np.array([cx, cy])
+
+    # Compute point D by taking projection of AC onto AB then adding the offset of A
+    ac = c - a
+    ab = b - a
+    d = np.dot(ac, ab) / np.linalg.norm(ab) + a
+    ad = d - a
+
+    # D might not be on AB, so calculate k of D down AB (solve AD = k * AB)
+    # Choose to use larger component to reduce chance of dividing by zero
+    k = ad[0] / ab[0] if np.abs(ab[0]) > np.abs(ab[1]) else ad[1] / ab[1]
+
+    # Check if D is off either end of line segment
+    if k <= 0.0:
+        dist = np.linalg.norm(c - a)
+        return 1 if dist <= r else 0
+    elif k >= 1.0:
+        dist = np.linalg.norm(c - b)
+        return 1 if dist <= r else 0
+    else:
+        dist = np.linalg.norm(c - d)
+        return 2 if dist <= r else 0
+
+def compute_reachable_cubes(robot_idx, robots, all_cubes):
+    # Filter the list of cubes to those reachable in a straight-line path from the current robot
+    # Returns a list of circles as obstacles to avoid, and a list of reachable cubes
 
     # Find a list of all obstacles to avoid, as circles
     circles = []
     for (idx, robot) in robots.items():
         if idx != robot_idx:
             ((x, y), th) = robot
-            circles.append((x, y, robot_radius))
+            circles.append((x, y, robot_radius + avoid_dist))
 
     for (color, cubes) in all_cubes.items():
         for cube in cubes:
             ((x, y), th) = cube
-            circles.append((x, y, cube_radius))
+            circles.append((x, y, cube_radius + avoid_dist))
 
-    # Compute binary image of drivable area in world coordinates
-    drivable_area = np.zeros((field_dimy, field_dimx), dtype=np.uint8)
-    for (x, y, r) in circles:
-        cv2.circle(drivable_area, (int(x), int(y)), r + avoid_dist, (255, 255, 255), -1)
-    cv2.imshow("drivable", drivable_area[::-1,:])
+    # Abort if robot is not found yet
+    if robot_idx not in robots:
+        return (circles, {})
 
-    # Compute convex hull of drivable area
-    canny_edges = cv2.Canny(drivable_area, 100, 200)
-    cv2.imshow("edges", canny_edges[::-1,:])
+    # For each cube, compute whether that cube is reachable
+    ((rx, ry), rth) = robots[robot_idx]
+    reachable_cubes = {}
+    for (color, cubes) in all_cubes.items():
+        reachable_cubes[color] = []
+        for cube in cubes:
+            ((cx, cy), _) = cube
 
-    contours, _ = cv2.findContours(canny_edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(drivable_area, contours, -1, (0, 255, 0), 3)
-    cv2.imshow("contours", drivable_area[::-1,:])
+            # Loop through all other cubes to determine reachability
+            is_reachable = True
+            for (_, cubes_oth) in all_cubes.items():
+                for cube_oth in cubes_oth:
+                    ((ox, oy), _) = cube_oth
+                    # Cube is not reachable if it intersects with some other circle
+                    if circle_line_intersection(((rx, ry), (ox, oy)), (cx, cy, cube_radius + avoid_dist)) > 0 and \
+                            (ox, oy) != (cx, cy):
+                        is_reachable = False
+                        break
+                if not is_reachable:
+                    break
+            if is_reachable:
+                reachable_cubes[color].append(cube)
 
-    convex_hull = []
-    for contour in contours:
-        convex_hull.append(cv2.convexHull(contour))
-    cv2.drawContours(drivable_area, convex_hull, -1, (255, 0, 0), 3)
-    cv2.imshow("convex_hull", drivable_area[::-1,:])
-
-    # Compute the drivable area of each 
-    return circles
+    return (circles, reachable_cubes)
 
 def show_obstacles(circles, frame, world2img_cube, world2img_robot):
     # Draw the given circles as obstacles in the frame
@@ -59,14 +97,14 @@ def show_obstacles(circles, frame, world2img_cube, world2img_robot):
 
     frame_ = frame.copy()
     for (x, y, r) in circles:
-        if r == robot_radius:
+        if r == robot_radius + avoid_dist:
             (x_img, y_img) = transform_point(world2img_robot, (x, y))
-        elif r == cube_radius:
+        elif r == cube_radius + avoid_dist:
             (x_img, y_img) = transform_point(world2img_cube, (x, y))
         else:
             continue
 
-        cv2.circle(frame_, (int(x_img), int(y_img)), r + avoid_dist, (0, 0, 0), 3)
+        cv2.circle(frame_, (int(x_img), int(y_img)), r, (0, 0, 0), 3)
 
     return frame_
 
@@ -114,8 +152,14 @@ if __name__ == "__main__":
         (all_cubes, all_thresh, frame) = detect_cubes(frame, img2world_cube)
 
         # Compute path
-        circles = compute_path((0, 0), (600, 600), 8, robots, all_cubes)
+        (circles, reachable_cubes) = compute_reachable_cubes(8, robots, all_cubes)
         frame = show_obstacles(circles, frame, world2img_cube, world2img_robot)
+        
+        # Show reachable cubes
+        for (color, cubes) in reachable_cubes.items():
+            for ((cx, cy), _) in cubes:
+                (cx_img, cy_img) = transform_point(world2img_cube, (cx, cy))
+                cv2.circle(frame, (int(cx_img), int(cy_img)), cube_radius + avoid_dist, (255, 0, 0), 3)
         cv2.imshow("frame", frame)
 
         # Check if 'q' is pressed
