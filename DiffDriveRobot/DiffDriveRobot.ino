@@ -1,5 +1,5 @@
 #define DEBUG false
-#define ROBOT_ID 0
+#define ROBOT_ID 1
 
 void setup() {
   Serial.begin(115200); // Debug
