@@ -59,7 +59,7 @@ def compute_obstacle_circles(robot_idx, robots, all_cubes):
 
     return circles
 
-def compute_reachable_cubes(robot_pos, all_cubes, frame, world2img_cube):
+def compute_reachable_cubes(robot_pos, all_cubes):
     # Filter the list of cubes to those reachable in a straight-line path from the current robot
     # Returns a list of reachable cubes in the same format as all_cubes
     
@@ -79,11 +79,6 @@ def compute_reachable_cubes(robot_pos, all_cubes, frame, world2img_cube):
                     ((ox, oy), _) = cube_oth
                     # Cube is not reachable if the segment from the robot to the
                     # current cube intersects with some other cube
-                    (rx_img, ry_img) = transform_point(world2img_cube, (rx, ry))
-                    (cx_img, cy_img) = transform_point(world2img_cube, (cx, cy))
-                    (ox_img, oy_img) = transform_point(world2img_cube, (ox, oy))
-                    cv2.line(frame, (int(rx_img), int(ry_img)), (int(cx_img), int(cy_img)), (0, 255, 0), 3)
-                    cv2.circle(frame, (int(ox_img), int(oy_img)), cube_radius + avoid_dist, (0, 0, 255), 3)
                     if circle_line_intersection(((rx, ry), (cx, cy)), (ox, oy, cube_radius + avoid_dist)) > 0 \
                             and (ox, oy) != (cx, cy):
                         is_reachable = False
