@@ -59,12 +59,9 @@ void turnRelAngle(float angle) {
   stop();
 }
 
-void goToPose(float x, float y, float th) {
+void goToPose(float x, float y, float th, bool goBackwards) {
   // Turn towards goal
-  bool goBackwards = false;
-
   float angleToTurn = normalizeAngle(atan2(y - currentY, x - currentX) - currentTh);
-  if (abs(angleToTurn) > PI / 2) goBackwards = true;
 
   turnRelAngle(goBackwards ? normalizeAngle(angleToTurn + PI) : angleToTurn);
 

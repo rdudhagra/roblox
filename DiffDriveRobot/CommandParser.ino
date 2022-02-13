@@ -2,6 +2,7 @@
 
 // What should the robot do?
 #define COMMAND_DRIVE 'D' // Drive
+#define COMMAND_BACKWARDS 'B' // Drive backwards
 #define COMMAND_OVERWRITE 'W' // Overwrite the current pose of the robot
 #define COMMAND_UPDATE 'U' // Refine the current pose of the robot using an external ground-truth (do a weighted average of current pose and the new one)
 #define COMMAND_PICK 'P' // Pick up object using gripper
@@ -50,6 +51,14 @@ void processNewCommand(char *cmd_str) {
           cmdX = x;
           cmdY = y;
           cmdTh = th;
+          cmdBackwards = false;
+          cmdReady = true;
+          break;
+        case COMMAND_BACKWARDS:
+          cmdX = x;
+          cmdY = y;
+          cmdTh = th;
+          cmdBackwards = true;
           cmdReady = true;
           break;
         case COMMAND_UPDATE:

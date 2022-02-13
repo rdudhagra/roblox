@@ -12,11 +12,12 @@ bool cmdReady = false;
 float cmdX;
 float cmdY;
 float cmdTh;
+bool cmdBackwards;
 
 void loop() {
   if (cmdReady) {
     cmdReady = false;
-    goToPose(cmdX, cmdY, cmdTh);
+    goToPose(cmdX, cmdY, cmdTh, cmdBackwards);
     print_done();
   }
 }
