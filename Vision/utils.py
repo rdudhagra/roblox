@@ -8,9 +8,10 @@ class CUBE_PROGRESS(Enum):
     PICKING_UP_CUBE = 3
     BACKING_UP_PICK = 4
     GOING_TO_DROP_LOCATION = 5
-    DROPPING_CUBE = 6
-    BACKING_UP_DROP = 7
-    DONE = 8
+    REFINING_DROP_POS = 6
+    DROPPING_CUBE = 7
+    BACKING_UP_DROP = 8
+    DONE = 9
 
     def __eq__(self, other):
         return self.value == other  

@@ -23,7 +23,7 @@ class VideoCapture:
             with open(calib, "rb") as f:
                 self.calib = pickle.load(f)
         
-        self.writer = cv2.VideoWriter("videos/out_{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}.mp4",
+        self.writer = cv2.VideoWriter("videos/out_{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}.avi",
                                       cv2.VideoWriter_fourcc("*MJPG"), 30, width, height)
 
     def set(self, var1, var2):

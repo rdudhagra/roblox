@@ -7,7 +7,7 @@ ports = [port.device for port in serial.tools.list_ports.comports()]
 print(f"Serial ports: ${ports}")
 
 # Connect to first available serial port with 115200 baud
-ser = serial.Serial(port=ports[1], baudrate=115200, timeout=0.02)
+ser = serial.Serial(port=ports[-1], baudrate=115200, timeout=0.02)
 last_cmd = ""
 
 robots_still_working = {}

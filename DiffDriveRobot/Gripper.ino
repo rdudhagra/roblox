@@ -29,7 +29,7 @@ void pick() {
   lift.write(LIFT_DOWN_FAST);
   pause(0.1);
   lift.write(LIFT_DOWN - 2);
-  pause(1.5);
+  pause(2.0);
   lift.write(LIFT_STOP);
   claw.write(CLAW_GRIP);
   pause(0.25);
@@ -43,7 +43,7 @@ void drop() {
   lift.write(LIFT_DOWN_FAST);
   pause(0.1);
   lift.write(LIFT_DOWN);
-  pause(1.5);
+  pause(2.0);
   lift.write(LIFT_STOP);
   claw.write(CLAW_DROP);
   pause(0.25);

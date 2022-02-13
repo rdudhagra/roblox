@@ -40,7 +40,7 @@ if __name__ == "__main__":
     ).start()
 
     # Create a window
-    # cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
+    cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
     print("Sleeping for a bit...")
     time.sleep(3)
@@ -65,6 +65,8 @@ if __name__ == "__main__":
     while True:
         # Read frame
         ret, frame = cap.read_calib() if args.use_calib else cap.read()
+        cv2.imshow("frame", frame)
+        cv2.waitKey(1)
 
         # Detect apriltags and find img2world transform for cube height corners
         tags = detect_apriltags(frame)
@@ -90,6 +92,10 @@ if __name__ == "__main__":
                 time.sleep(0.03)
                 continue
 
+            if rob_to_april_tag(robot) not in robot_poses:
+                time.sleep(0.03)
+                continue
+
             rob_pose = robot_poses[rob_to_april_tag(robot)]
             # refine_pose(robot, rob_pose[0][0], rob_pose[0][1], rob_pose[1])
 
@@ -103,34 +109,35 @@ if __name__ == "__main__":
                     # We're done!
                     TASK_DONE = True
 
-                # First cube for now, this can be made better later
-                cube_color, image_ind, cube_pos = cubes_needed_now[0]
-                image_progress[image_ind[0], image_ind[1]] = 1
+                else:
+                    # First cube for now, this can be made better later
+                    cube_color, image_ind, cube_pos = cubes_needed_now[0]
+                    image_progress[image_ind[0], image_ind[1]] = 1
 
-                cube_pos[2] = np.pi # Force acquisition from the right side
-                robot_drop_locations[robot] = cube_pos
+                    cube_pos[2] = np.pi # Force acquisition from the right side
+                    robot_drop_locations[robot] = cube_pos
 
-                reachable_cubes = compute_reachable_cubes(
-                    rob_pose[0], all_cubes)[cube_color_var_to_str(cube_color)]
-                if len(reachable_cubes) == 0:
-                    print("No reachable cubes")
-                    continue
-                ((cube_x, cube_y), cube_th) = reachable_cubes[0]
-                acq_poses = robot_acquisition_poses_from_cube_pose(
-                    cube_x, cube_y, cube_th)
-                selected_pose = acq_poses[np.argmin(
-                    [np.linalg.norm(p[0:2] - rob_pose[0]) for p in acq_poses])]
-                robot_pick_locations[robot] = selected_pose
+                    reachable_cubes = compute_reachable_cubes(
+                        rob_pose[0], all_cubes)[cube_color_var_to_str(cube_color)]
+                    if len(reachable_cubes) == 0:
+                        print("No reachable cubes")
+                        continue
+                    ((cube_x, cube_y), cube_th) = reachable_cubes[0]
+                    acq_poses = robot_acquisition_poses_from_cube_pose(
+                        cube_x, cube_y, cube_th)
+                    selected_pose = acq_poses[np.argmin(
+                        [np.linalg.norm(p[0:2] - rob_pose[0]) for p in acq_poses])]
+                    robot_pick_locations[robot] = selected_pose
 
-                print(
-                    f"Picking up a {cube_color_var_to_str(cube_color)} cube from {selected_pose} to {cube_pos}")
+                    print(
+                        f"Picking up a {cube_color_var_to_str(cube_color)} cube from {selected_pose} to {cube_pos}")
 
-                pre_select_pose = list(selected_pose)
-                pre_select_pose[0] -= np.cos(pre_select_pose[2]) * 50
-                pre_select_pose[1] -= np.sin(pre_select_pose[2]) * 50
-                drive(robot, *pre_select_pose)
+                    pre_select_pose = list(selected_pose)
+                    pre_select_pose[0] -= np.cos(pre_select_pose[2]) * 50
+                    pre_select_pose[1] -= np.sin(pre_select_pose[2]) * 50
+                    drive(robot, *pre_select_pose)
 
-                robot_progress[robot] = CUBE_PROGRESS.GOING_TO_CUBE
+                    robot_progress[robot] = CUBE_PROGRESS.GOING_TO_CUBE
 
             elif robot_progress[robot] == CUBE_PROGRESS.GOING_TO_CUBE:
                 set_pose(robot, rob_pose[0][0], rob_pose[0][1], rob_pose[1])
@@ -154,11 +161,20 @@ if __name__ == "__main__":
 
             elif robot_progress[robot] == CUBE_PROGRESS.BACKING_UP_PICK:
                 set_pose(robot, rob_pose[0][0], rob_pose[0][1], rob_pose[1])
-                drive(robot, *robot_drop_locations[robot])
+                pre_select_pose = list(robot_drop_locations[robot])
+                pre_select_pose[0] -= np.cos(pre_select_pose[2]) * 50
+                pre_select_pose[1] -= np.sin(pre_select_pose[2]) * 50
+                drive(robot, *pre_select_pose)
 
                 robot_progress[robot] = CUBE_PROGRESS.GOING_TO_DROP_LOCATION
 
             elif robot_progress[robot] == CUBE_PROGRESS.GOING_TO_DROP_LOCATION:
+                set_pose(robot, rob_pose[0][0], rob_pose[0][1], rob_pose[1])
+                drive(robot, *robot_drop_locations[robot])
+
+                robot_progress[robot] = CUBE_PROGRESS.REFINING_DROP_POS
+
+            elif robot_progress[robot] == CUBE_PROGRESS.REFINING_DROP_POS:
                 place(robot)
 
                 robot_progress[robot] = CUBE_PROGRESS.DROPPING_CUBE
@@ -183,8 +199,6 @@ if __name__ == "__main__":
                 robot_progress[robot] = CUBE_PROGRESS.HAS_NOT_STARTED
 
             print(f"Robot {robot}: {robot_progress[robot]}")
-
-        # cv2.imshow("frame", frame)
 
         # Check if we are done with the entire image
         if TASK_DONE:
