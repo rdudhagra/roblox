@@ -1,6 +1,6 @@
 import numpy as np
 
-DIST_FROM_GRIPPER_TO_ROBOT = 53
+DIST_FROM_GRIPPER_TO_ROBOT = 48 # mm
 
 def robot_acquisition_poses_from_cube_pose(cube_x, cube_y, cube_th):
     poses = []
@@ -16,3 +16,7 @@ def robot_acquisition_poses_from_cube_pose(cube_x, cube_y, cube_th):
         poses.append(np.array([x, y, th]))
 
     return poses
+
+if __name__ == "__main__":
+    # Tests
+    print(robot_acquisition_poses_from_cube_pose(0, 0, np.pi/4))
