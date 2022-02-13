@@ -10,7 +10,7 @@ from video_capture_threading import VideoCaptureThreading as VideoCapture
 # Specify radius of each obstacle and how far to stay away from obstacles
 cube_radius = 18  # Radius of cube (mm)
 robot_radius = 80 # Radius of robot (mm)
-avoid_dist = 30   # How far to stay away from each object's bounding box (mm)
+avoid_dist = 20   # How far to stay away from each object's bounding box (mm)
 
 def circle_line_intersection(segment, circle):
     # Returns the number of circle-segment intersections
@@ -25,8 +25,9 @@ def circle_line_intersection(segment, circle):
     # Compute point D by taking projection of AC onto AB then adding the offset of A
     ac = c - a
     ab = b - a
-    d = np.dot(ac, ab) / np.linalg.norm(ab) + a
-    ad = d - a
+    ab_unit = ab / np.linalg.norm(ab)
+    ad = np.dot(ac, ab_unit) * ab_unit
+    d = a + ad
 
     # D might not be on AB, so calculate k of D down AB (solve AD = k * AB)
     # Choose to use larger component to reduce chance of dividing by zero
@@ -58,7 +59,7 @@ def compute_obstacle_circles(robot_idx, robots, all_cubes):
 
     return circles
 
-def compute_reachable_cubes(robot_pos, all_cubes):
+def compute_reachable_cubes(robot_pos, all_cubes, frame, world2img_cube):
     # Filter the list of cubes to those reachable in a straight-line path from the current robot
     # Returns a list of reachable cubes in the same format as all_cubes
     
@@ -76,9 +77,15 @@ def compute_reachable_cubes(robot_pos, all_cubes):
             for (_, cubes_oth) in all_cubes.items():
                 for cube_oth in cubes_oth:
                     ((ox, oy), _) = cube_oth
-                    # Cube is not reachable if it intersects with some other circle
-                    if circle_line_intersection(((rx, ry), (ox, oy)), (cx, cy, cube_radius + avoid_dist)) > 0 and \
-                            (ox, oy) != (cx, cy):
+                    # Cube is not reachable if the segment from the robot to the
+                    # current cube intersects with some other cube
+                    (rx_img, ry_img) = transform_point(world2img_cube, (rx, ry))
+                    (cx_img, cy_img) = transform_point(world2img_cube, (cx, cy))
+                    (ox_img, oy_img) = transform_point(world2img_cube, (ox, oy))
+                    cv2.line(frame, (int(rx_img), int(ry_img)), (int(cx_img), int(cy_img)), (0, 255, 0), 3)
+                    cv2.circle(frame, (int(ox_img), int(oy_img)), cube_radius + avoid_dist, (0, 0, 255), 3)
+                    if circle_line_intersection(((rx, ry), (cx, cy)), (ox, oy, cube_radius + avoid_dist)) > 0 \
+                            and (ox, oy) != (cx, cy):
                         is_reachable = False
                         break
                 if not is_reachable:
@@ -150,11 +157,11 @@ if __name__ == "__main__":
 
         # Detect cubes and compute reachable cubes
         (all_cubes, all_thresh, frame) = detect_cubes(frame, img2world_cube)
-        reachable_cubes = compute_reachable_cubes(robots[8][0], all_cubes) if 8 in robots else {}
+        reachable_cubes = compute_reachable_cubes(robots[9][0], all_cubes, frame, world2img_cube) if 9 in robots else {}
 
         # Show all cube hitboxes
         circles = compute_obstacle_circles(8, robots, all_cubes)
-        frame = show_obstacles(circles, frame, world2img_cube, world2img_robot)
+#        frame = show_obstacles(circles, frame, world2img_cube, world2img_robot)
         
         # Show reachable cubes
         for (color, cubes) in reachable_cubes.items():
