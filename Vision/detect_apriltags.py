@@ -30,7 +30,6 @@ def get_corners_to_detect(corner_type):
     if corner_type == "cube":
         (x1, x2) = (3 * tag_dimx / 2, field_dimx - 3 * tag_dimx / 2)
         (y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
-        y1 += tag_dimy
         corners_cube = { # Same height as cube
             0: np.array([x1, y1]),
             1: np.array([x2, y1]),
@@ -42,7 +41,6 @@ def get_corners_to_detect(corner_type):
     elif corner_type == "robot":
         (x1, x2) = (tag_dimx / 2, field_dimx - tag_dimx / 2)
         (y1, y2) = (tag_dimy / 2, field_dimy - tag_dimy / 2)
-        y1 += tag_dimy
         corners_robot = { # Same height as robot
             4: np.array([x1, y1]),
             5: np.array([x2, y1]),
@@ -62,9 +60,10 @@ def detect_apriltags(frame):
 
 def get_robot_poses(tags, img2world_robot):
     # Returns position and orientation of robot in world frame
-    if img2world_robot is None:
-        return None
     robots = {}
+    if img2world_robot is None:
+        return robots
+
     for tag in tags:
         if tag.tag_id in robot_ids:
             corners = transform_square(img2world_robot, tag.corners)

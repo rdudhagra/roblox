@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 
 from detect_apriltags import detect_apriltags, get_img2world_transform, get_robot_poses
-from detect_cubes import preprocess_frame, threshold_for_color, detect_squares, get_cube_poses
+from detect_cubes import detect_cubes
 from video_capture_threading import VideoCaptureThreading as VideoCapture
 
 if __name__ == "__main__":
@@ -33,7 +33,6 @@ if __name__ == "__main__":
     while True:
         # Read frame
         ret, frame = cap.read_calib() if args.use_calib else cap.read()
-        cv2.imshow("frame", frame)
 
         # Detect apriltags and find img2world transform for cube height corners
         tags = detect_apriltags(frame)
@@ -46,14 +45,11 @@ if __name__ == "__main__":
         get_robot_poses(tags, img2world_robot)
 
         # Detect cubes
-        hsv_img = preprocess_frame(frame)
-        thresh_all = None
-        for color in ["red", "green", "blue", "yellow", "purple", "orange"]:
-            thresh_img = threshold_for_color(hsv_img, color)
-            thresh_all = thresh_img if thresh_all is None else np.bitwise_or(thresh_all, thresh_img)
+        (all_cubes, all_thresh, frame) = detect_cubes(frame, img2world_cube)
+        cv2.imshow("frame", frame)
 
-            cubes = get_cube_poses(detect_squares(thresh_img), img2world_cube)
-            print(color, "cubes:", cubes)
+        for (color, cubes) in all_cubes.items():
+            print(f"{color} cubes: {' / '.join([repr(((x, y), th * 180 / np.pi)) for ((x, y), th) in cubes])}")
 
         # Check if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
