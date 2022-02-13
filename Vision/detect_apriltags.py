@@ -23,7 +23,7 @@ tag_dimy = 60
 field_dimx = 840 # 11 x 3 = 33in
 field_dimy = 650 # 8.5 x 3 = 25.5in
 
-robot_ids = [8, 9, 10, 11]
+robot_ids = [8, 9]
 
 def get_corners_to_detect(corner_type):
     # Returns: Dict from apriltag tag_id's => Position of tag center in world coordinates

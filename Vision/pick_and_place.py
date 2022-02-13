@@ -1,10 +1,13 @@
 import argparse
 import cv2
 import numpy as np
+import time
 
 from detect_apriltags import detect_apriltags, get_img2world_transform, get_robot_poses
 from detect_cubes import detect_cubes
 from video_capture_threading import VideoCaptureThreading as VideoCapture
+from pose_utils import robot_acquisition_poses_from_cube_pose
+from robot_interface import *
 
 if __name__ == "__main__":
     # Command line argument parsing
@@ -29,6 +32,10 @@ if __name__ == "__main__":
     # Create a window
     cv2.namedWindow("frame", cv2.WINDOW_NORMAL)
 
+    print("Sleeping for a bit...")
+    time.sleep(5)
+    print("ok imma start now")
+
     # Show frames until 'q' is pressed
     while True:
         # Read frame
@@ -42,7 +49,7 @@ if __name__ == "__main__":
         img2world_robot = get_img2world_transform(tags, "robot")
 
         # Find robot poses
-        robots = get_robot_poses(tags, img2world_robot)
+        robot_poses = get_robot_poses(tags, img2world_robot)
 
         # Detect cubes
         (all_cubes, all_thresh, frame) = detect_cubes(frame, img2world_cube)
@@ -50,6 +57,31 @@ if __name__ == "__main__":
 
         for (color, cubes) in all_cubes.items():
             print(f"{color} cubes: {' / '.join([repr(((x, y), th * 180 / np.pi)) for ((x, y), th) in cubes])}")
+
+
+        # Drive to cube-proof of concept
+        if len(all_cubes["green"]) == 0:
+            continue
+        first_cube = all_cubes["green"][0]
+        rob_pose = robot_poses[9]
+        # Tell robot where it is
+        set_pose(1, rob_pose[0][0], rob_pose[0][1], rob_pose[1])
+        print(rob_pose)
+        time.sleep(0.1)
+
+        acq_poses = robot_acquisition_poses_from_cube_pose(first_cube[0][0], first_cube[0][1], first_cube[1])
+        selected_pose = acq_poses[np.argmin([np.linalg.norm(p[0:2] - rob_pose[0]) for p in acq_poses])]
+        print(selected_pose)
+        drive(1, *selected_pose)
+        wait(1)
+        pick(1)
+        wait(1)
+        drive(1, selected_pose[0] + 100, selected_pose[1], selected_pose[2])
+        wait(1)
+        place(1)
+        wait(1)
+
+        exit(0)
 
         # Check if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):

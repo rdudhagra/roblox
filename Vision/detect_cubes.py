@@ -23,8 +23,8 @@ def preprocess_frame(frame):
     hsv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
     # Sharpen
-    frame_sharpen = cv2.GaussianBlur(frame, (0, 0), 1)
-    frame_sharpen = cv2.addWeighted(frame, 1.5, frame_sharpen, -0.5, 0)
+    # frame_sharpen = cv2.GaussianBlur(hsv_img, (0, 0), 1)
+    # frame_sharpen = cv2.addWeighted(hsv_img, 1.5, frame_sharpen, -0.5, 0)
 
     return hsv_img
 
@@ -127,6 +127,7 @@ if __name__ == "__main__":
     while True:
         # Read frame
         ret, frame = cap.read_calib() if args.use_calib else cap.read()
+        hsv_img = preprocess_frame(frame)
 
         # Show frame
         for color in ["red", "green", "blue", "yellow", "purple", "orange"]:
