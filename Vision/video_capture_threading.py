@@ -1,4 +1,5 @@
 import cv2
+from datetime import datetime
 import numpy as np
 import pickle
 import threading
@@ -17,9 +18,13 @@ class VideoCapture:
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
         self.cap.set(cv2.CAP_PROP_FPS, fps)
+
         if calib is not None and calib != "":
             with open(calib, "rb") as f:
                 self.calib = pickle.load(f)
+        
+        self.writer = cv2.VideoWriter("videos/out_{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}.mp4",
+                                      cv2.VideoWriter_fourcc("*MJPG"), 30, width, height)
 
     def set(self, var1, var2):
         self.cap.set(var1, var2)
@@ -32,6 +37,7 @@ class VideoCapture:
         for i in range(frames_per_loop):
             self.cap.grab()
         grabbed, frame = self.cap.retrieve()
+        self.writer.write(frame)
 
         # Perform white balancing
         brightest_coords = np.argmax(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
@@ -52,6 +58,7 @@ class VideoCapture:
 
     def __exit__(self, exec_type, exc_value, traceback):
         self.cap.release()
+        self.writer.release()
 
 
 class VideoCaptureThreading:
@@ -69,6 +76,9 @@ class VideoCaptureThreading:
         if calib is not None and calib != "":
             with open(calib, "rb") as f:
                 self.calib = pickle.load(f)
+        
+        self.writer = cv2.VideoWriter("videos/out_{datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}.mp4",
+                                      cv2.VideoWriter_fourcc("*MJPG"), 30, width, height)
 
     def set(self, var1, var2):
         self.cap.set(var1, var2)
@@ -88,6 +98,7 @@ class VideoCaptureThreading:
             with self.read_lock:
                 self.grabbed = grabbed
                 self.frame = frame
+            self.writer.write(frame)
 
     def read(self):
         with self.read_lock:
@@ -114,3 +125,4 @@ class VideoCaptureThreading:
     
     def __exit__(self, exec_type, exc_value, traceback):
         self.cap.release()
+        self.writer.release()
