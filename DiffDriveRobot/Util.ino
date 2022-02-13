@@ -5,7 +5,8 @@ inline float getTime() {
 }
 
 inline void pause(float seconds) {
-  delay(seconds * 1000.0);
+  unsigned long startMillis = millis();
+  while(millis() - startMillis < int(seconds * 1000.0));
 }
 
 void print_pos() {

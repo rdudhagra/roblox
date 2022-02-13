@@ -5,7 +5,10 @@
 
 void moveRelDist(float dist) {
   // Don't do anything if dist is 0 (or very close to)
-  if (abs(dist) < 0.001) return;
+  if (abs(dist) < 0.001) {
+    pause(0.05);
+    return;
+  }
 
   float V;
   float w;
@@ -33,7 +36,10 @@ void moveRelDist(float dist) {
 
 void turnRelAngle(float angle) {
   // Don't do anything if angle is 0 (or very close to)
-  if (abs(angle) < 0.02) return;
+  if (abs(angle) < 0.02) {
+    pause(0.05);
+    return;
+  }
 
   float V;
   float w;
@@ -61,15 +67,21 @@ void turnRelAngle(float angle) {
 
 void goToPose(float x, float y, float th, bool goBackwards) {
   // Turn towards goal
+    Serial5.println("foooA");
   float angleToTurn = normalizeAngle(atan2(y - currentY, x - currentX) - currentTh);
+    Serial5.println("foooB");
 
   turnRelAngle(goBackwards ? normalizeAngle(angleToTurn + PI) : angleToTurn);
+    Serial5.println("foooC");
 
   // Move in a straight line to goal
   moveRelDist((goBackwards ? -1 : 1) * sqrt(sq(x - currentX) + sq(y - currentY)));
+    Serial5.println("foooD");
 
   // Turn to final desired angle
   turnRelAngle(normalizeAngle(th - currentTh));
+    Serial5.println("foooE");
 
   resetFF(x, y, th);
+    Serial5.println("foooF");
 }

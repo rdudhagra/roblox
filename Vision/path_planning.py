@@ -74,6 +74,9 @@ def compute_reachable_cubes(robot_pos, all_cubes):
 
             # Loop through all other cubes to determine reachability
             is_reachable = True
+            if rx > cx:
+                # Only grab cubes that are to the right of the robot
+                is_reachable = False
             for (_, cubes_oth) in all_cubes.items():
                 for cube_oth in cubes_oth:
                     ((ox, oy), _) = cube_oth

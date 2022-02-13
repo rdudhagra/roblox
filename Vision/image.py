@@ -16,6 +16,30 @@ SMILE_IMAGE = [
     [_, _, _, _, _, Y, _, _],
 ]
 
+FLIP_SMILE_IMAGE = [
+    [_, _, Y, _, _, _, _, _],
+    [_, Y, _, _, _, _, B, _],
+    [_, Y, _, R, R, _, _, _],
+    [_, Y, _, _, _, _, B, _],
+    [_, _, Y, _, _, _, _, _],
+]
+
+HI_IMAGE = [
+    [_, V, _, _, B, _, G, _],
+    [_, B, _, _, G, _, _, _],
+    [_, G, G, Y, Y, _, O, _],
+    [_, Y, _, _, O, _, R, _],
+    [_, O, _, _, R, _, R, _],
+]
+
+GM_IMAGE = [
+    [_, G, G, _, G, _, _, G],
+    [G, _, _, _, G, G, G, G],
+    [G, _, G, G, G, _, _, G],
+    [G, _, _, G, G, _, _, G],
+    [_, G, G, _, G, _, _, G],
+]
+
 BLANK_IMAGE = [
     [_, _, _, _, _, _, _, _],
     [_, _, _, _, _, _, _, _],
@@ -59,7 +83,7 @@ def cubes_needed(image: np.ndarray, image_progress: np.ndarray):
 
 
 def cube_ind_to_world_pose(cube_row, cube_col):
-    return [(cube_row + 1) * 50, 120 + cube_col * 50, 0]
+    return [100 + cube_row * 50, 120 + cube_col * 50, 0]
 
 
 if __name__ == "__main__":

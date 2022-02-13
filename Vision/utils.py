@@ -4,12 +4,13 @@ from enum import Enum
 class CUBE_PROGRESS(Enum):
     HAS_NOT_STARTED = 0
     GOING_TO_CUBE = 1
-    PICKING_UP_CUBE = 2
-    BACKING_UP_PICK = 3
-    GOING_TO_DROP_LOCATION = 4
-    DROPPING_CUBE = 5
-    BACKING_UP_DROP = 6
-    DONE = 7
+    REFINING_PICK_POS = 2
+    PICKING_UP_CUBE = 3
+    BACKING_UP_PICK = 4
+    GOING_TO_DROP_LOCATION = 5
+    DROPPING_CUBE = 6
+    BACKING_UP_DROP = 7
+    DONE = 8
 
     def __eq__(self, other):
         return self.value == other  

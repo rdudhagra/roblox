@@ -1,14 +1,14 @@
 #include <Servo.h>
 
 // Robot 0
-//#define CLAW_FULLY_OPEN 180
-//#define CLAW_DROP 140
-//#define CLAW_GRIP 90
+#define CLAW_FULLY_OPEN 180
+#define CLAW_DROP 140
+#define CLAW_GRIP 90
 
 // Robot 1
-#define CLAW_FULLY_OPEN 120
-#define CLAW_DROP 100
-#define CLAW_GRIP 50
+//#define CLAW_FULLY_OPEN 120
+//#define CLAW_DROP 100
+//#define CLAW_GRIP 50
 
 // All robots
 #define LIFT_UP 110
@@ -29,12 +29,12 @@ void pick() {
   lift.write(LIFT_DOWN_FAST);
   pause(0.1);
   lift.write(LIFT_DOWN - 2);
-  pause(5);
+  pause(1.5);
   lift.write(LIFT_STOP);
   claw.write(CLAW_GRIP);
-  pause(0.5);
+  pause(0.25);
   lift.write(LIFT_UP);
-  pause(5);
+  pause(1.5);
   lift.write(LIFT_STOP);
 }
 
@@ -43,12 +43,12 @@ void drop() {
   lift.write(LIFT_DOWN_FAST);
   pause(0.1);
   lift.write(LIFT_DOWN);
-  pause(10);
+  pause(1.5);
   lift.write(LIFT_STOP);
   claw.write(CLAW_DROP);
-  pause(0.5);
+  pause(0.25);
   lift.write(LIFT_UP);
-  pause(5);
+  pause(1.5);
   lift.write(LIFT_STOP);
   claw.write(CLAW_FULLY_OPEN);
 }

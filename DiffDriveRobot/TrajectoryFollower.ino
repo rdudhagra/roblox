@@ -1,4 +1,4 @@
-#define TIME_PAUSE 0.1
+#define TIME_PAUSE 0.01
 
 float trapezoidalVelocityProfile(float t, float dist, float vmax, float amax) {
   // t: the current time

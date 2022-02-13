@@ -69,7 +69,7 @@ void processNewCommand(char *cmd_str) {
           break;
       }
     }
-  } else if(num_args_parsed == 2) {
+  } else if (num_args_parsed == 2) {
     // Also parsed command successfully!
     if (robot_num == ROBOT_ID) {
       if (DEBUG) {
@@ -78,12 +78,10 @@ void processNewCommand(char *cmd_str) {
       }
       switch (cmd) {
         case COMMAND_PICK:
-          pick();
-          print_done();
+          doPick = true;
           break;
         case COMMAND_PLACE:
-          drop();
-          print_done();
+          doPlace = true;
           break;
       }
     }

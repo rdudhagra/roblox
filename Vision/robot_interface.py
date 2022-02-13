@@ -7,9 +7,12 @@ ports = [port.device for port in serial.tools.list_ports.comports()]
 print(f"Serial ports: ${ports}")
 
 # Connect to first available serial port with 115200 baud
-ser = serial.Serial(port=ports[-1], baudrate=115200, timeout=0.001)
+ser = serial.Serial(port=ports[1], baudrate=115200, timeout=0.02)
+last_cmd = ""
 
 robots_still_working = {}
+
+timeout_time = {}
 
 
 def drive(robot_num, x, y, th):
@@ -21,8 +24,13 @@ def drive(robot_num, x, y, th):
         y (float): Y coordinate in mm.
         th (float): Angle in radians.
     """
-    ser.write(f'R{robot_num};D;X{x/1000};Y{y/1000};T{th}\n'.encode('utf-8'))
+    global timeout_time
+
+    last_cmd = f'R{robot_num};D;X{x/1000};Y{y/1000};T{th}\n'
+    ser.write(last_cmd.encode('utf-8'))
     robots_still_working[robot_num] = True
+
+    timeout_time[robot_num] = time.time() + 15
 
 
 def reverse(robot_num, x, y, th):
@@ -34,8 +42,13 @@ def reverse(robot_num, x, y, th):
         y (float): Y coordinate in mm.
         th (float): Angle in radians.
     """
-    ser.write(f'R{robot_num};B;X{x/1000};Y{y/1000};T{th}\n'.encode('utf-8'))
+    global timeout_time
+
+    last_cmd = f'R{robot_num};B;X{x/1000};Y{y/1000};T{th}\n'
+    ser.write(last_cmd.encode('utf-8'))
     robots_still_working[robot_num] = True
+
+    timeout_time[robot_num] = time.time() + 15
 
 
 def set_pose(robot_num, x, y, th):
@@ -70,8 +83,13 @@ def pick(robot_num):
     Args:
         robot_num (int): Robot ID number.
     """
-    ser.write(f'R{robot_num};P\n'.encode('utf-8'))
+    global timeout_time
+
+    last_cmd = f'R{robot_num};P\n'
+    ser.write(last_cmd.encode('utf-8'))
     robots_still_working[robot_num] = True
+
+    timeout_time[robot_num] = time.time() + 5
 
 
 def place(robot_num):
@@ -80,8 +98,16 @@ def place(robot_num):
     Args:
         robot_num (int): Robot ID number.
     """
-    ser.write(f'R{robot_num};L\n'.encode('utf-8'))
+    global timeout_time
+
+    last_cmd = f'R{robot_num};L\n'
+    ser.write(last_cmd.encode('utf-8'))
     robots_still_working[robot_num] = True
+
+    timeout_time[robot_num] = time.time() + 5
+
+
+serialData = ""
 
 
 def isRobotRunning(robot_num):
@@ -90,16 +116,27 @@ def isRobotRunning(robot_num):
     Args:
         robot_num (int): Robot ID number.
     """
+    global serialData
 
     # Read incoming data from serial port
     data = ser.read_until().decode('utf-8')
     if len(data) > 0:
         print(f"RECEIVED DATA FROM ROBOT: \"{data}\"")
 
-    if ";DONE" in data:
+    serialData += data
+
+    if ";DONE" in serialData:
         # Robot is done moving
-        robot_num = int(data[1])
+        robot_num = int(serialData[1])
         robots_still_working[robot_num] = False
+
+    if "\n" in serialData:
+        serialData = ""
+
+    if robot_num in timeout_time and timeout_time[robot_num] < time.time():
+        # Robot timed out
+        print(f"ROBOT {robot_num} TIMED OUT...sending last command again!")
+        ser.write(last_cmd.encode('utf-8'))
 
     if robot_num in robots_still_working:
         return robots_still_working[robot_num]

@@ -179,7 +179,8 @@ if __name__ == "__main__":
         test_img2world_transform(tags, img2world_robot, "robot")
 
         # Find robot poses
-        get_robot_poses(tags, robot_ids, img2world_robot)
+        # get_robot_poses(tags, robot_ids, img2world_robot)
+        get_robot_poses(tags, img2world_robot)
 
         # Check if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
