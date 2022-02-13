@@ -2,7 +2,7 @@ import argparse
 import cv2
 import numpy as np
 
-from detect_apriltags import detect_apriltags, get_img2world_transform, get_robot_poses
+from detect_apriltags import detect_apriltags, get_img2world_transform, get_robot_poses, field_dimx, field_dimy
 from detect_cubes import detect_cubes
 from utils import transform_point
 from video_capture_threading import VideoCaptureThreading as VideoCapture
@@ -10,7 +10,7 @@ from video_capture_threading import VideoCaptureThreading as VideoCapture
 # Specify radius of each obstacle and how far to stay away from obstacles
 cube_radius = 18  # Radius of cube (mm)
 robot_radius = 80 # Radius of robot (mm)
-avoid_dist = 50   # How far to stay away from each object's bounding box (mm)
+avoid_dist = 40   # How far to stay away from each object's bounding box (mm)
 
 def compute_path(start_pose, end_pose, robot_idx, robots, all_cubes):
     # Compute a path from the start to the end, avoiding cubes and other robots
@@ -20,13 +20,34 @@ def compute_path(start_pose, end_pose, robot_idx, robots, all_cubes):
     for (idx, robot) in robots.items():
         if idx != robot_idx:
             ((x, y), th) = robot
-            circles.append((x, y, robot_radius + avoid_dist))
+            circles.append((x, y, robot_radius))
 
     for (color, cubes) in all_cubes.items():
         for cube in cubes:
             ((x, y), th) = cube
-            circles.append((x, y, cube_radius + avoid_dist))
+            circles.append((x, y, cube_radius))
 
+    # Compute binary image of drivable area in world coordinates
+    drivable_area = np.zeros((field_dimy, field_dimx), dtype=np.uint8)
+    for (x, y, r) in circles:
+        cv2.circle(drivable_area, (int(x), int(y)), r + avoid_dist, (255, 255, 255), -1)
+    cv2.imshow("drivable", drivable_area[::-1,:])
+
+    # Compute convex hull of drivable area
+    canny_edges = cv2.Canny(drivable_area, 100, 200)
+    cv2.imshow("edges", canny_edges[::-1,:])
+
+    contours, _ = cv2.findContours(canny_edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(drivable_area, contours, -1, (0, 255, 0), 3)
+    cv2.imshow("contours", drivable_area[::-1,:])
+
+    convex_hull = []
+    for contour in contours:
+        convex_hull.append(cv2.convexHull(contour))
+    cv2.drawContours(drivable_area, convex_hull, -1, (255, 0, 0), 3)
+    cv2.imshow("convex_hull", drivable_area[::-1,:])
+
+    # Compute the drivable area of each 
     return circles
 
 def show_obstacles(circles, frame, world2img_cube, world2img_robot):
@@ -38,15 +59,14 @@ def show_obstacles(circles, frame, world2img_cube, world2img_robot):
 
     frame_ = frame.copy()
     for (x, y, r) in circles:
-        r_ = r - avoid_dist
-        if r_ == robot_radius:
+        if r == robot_radius:
             (x_img, y_img) = transform_point(world2img_robot, (x, y))
-        elif r_ == cube_radius:
+        elif r == cube_radius:
             (x_img, y_img) = transform_point(world2img_cube, (x, y))
         else:
             continue
 
-        cv2.circle(frame_, (int(x_img), int(y_img)), r, (0, 0, 0), 3)
+        cv2.circle(frame_, (int(x_img), int(y_img)), r + avoid_dist, (0, 0, 0), 3)
 
     return frame_
 

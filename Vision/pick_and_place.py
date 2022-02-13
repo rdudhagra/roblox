@@ -42,7 +42,7 @@ if __name__ == "__main__":
         img2world_robot = get_img2world_transform(tags, "robot")
 
         # Find robot poses
-        get_robot_poses(tags, img2world_robot)
+        robots = get_robot_poses(tags, img2world_robot)
 
         # Detect cubes
         (all_cubes, all_thresh, frame) = detect_cubes(frame, img2world_cube)

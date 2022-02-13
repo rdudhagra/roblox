@@ -51,7 +51,7 @@ def detect_squares(threshold_img):
     contours, _ = cv2.findContours(threshold_img, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     # Filter squares by area and aspect ratio
-    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 250]
+    squares = [cv2.minAreaRect(c) for c in contours if cv2.contourArea(c) > 50]
     squares = [s for s in squares if 0.6 <= s[1][0] / s[1][1] <= 1.7]
     squares = [cv2.boxPoints(sq) for sq in squares]
     
